@@ -4,7 +4,7 @@ from numpy.linalg import norm
 import pymeshlab as mlab
 from .tendril import Tendril
 import os
-from .mesh_processing import dcp_meshset,simplify_mesh
+from .mesh_processing import simplify_mesh
 
 
 class Swc():
@@ -80,7 +80,7 @@ class Swc():
         self.branches = create_branches(self.conn_data,self.type_data)
         return None
 
-    def make_mesh(self,simplify=False,alpha_fraction= None,output_dir=None):
+    def make_mesh(self,simplify=False,alpha_fraction= None,output_dir=None,save=True):
         """"Compute watertight surface mesh"""
 
         # Store output information
@@ -108,7 +108,7 @@ class Swc():
         c = self.conn_data
         N = len(r)
         ms = mlab.MeshSet()
-        
+        r_min = min(r)
         # Place spheres at somas
         for i in range(0,N):
             if t[i] == 1:    
@@ -142,47 +142,13 @@ class Swc():
         ms.generate_alpha_wrap(alpha_fraction = alpha_fraction,offset_fraction =alpha_fraction/30)
         # Begin simplification
         if simplify:
-            attempt = 1
-            flag = False
             edges = np.linalg.norm(p[c[c[:,1]>-1,0],:] - p[c[c[:,1]>-1,1],:],axis = 1)
             total_length = sum(edges)
-            resolution_scale = int(total_length*4)
-            ms_cp = dcp_meshset(ms)
-            while not(flag) and attempt < 16:
-                if attempt*resolution_scale > ms.current_mesh().face_number():
-                    break
-                print(f'Applying simplification, attempt = {attempt}')
-                ms,flag = simplify_mesh(ms,attempt*resolution_scale)
-                attempt+= 1
-                if not(flag):
-                    ms = dcp_meshset(ms_cp)
-
-
-        print('Meshing complete')
-        if flag:
-            print('Meshing successful')
-            print(f'Saving to {name}')
-        else:
-            print('Meshing failed, try with coarser alpha mesh')
-            ms.generate_alpha_wrap(alpha_fraction = 5*alpha_fraction,offset_fraction =alpha_fraction/30)
-            if simplify:
-                attempt = 1
-                flag = False
-                edges = np.linalg.norm(p[c[c[:,1]>-1,0],:] - p[c[c[:,1]>-1,1],:],axis = 1)
-                total_length = sum(edges)
-                resolution_scale = int(total_length*4)
-                ms_cp = dcp_meshset(ms)
-                while not(flag) and attempt < 16:
-                    if attempt*resolution_scale > ms.current_mesh().face_number():
-                        break
-                    print(f'Applying simplification, attempt = {attempt}')
-                    ms,flag = simplify_mesh(ms,attempt*resolution_scale)
-                    attempt+= 1
-                    if not(flag):
-                        ms = dcp_meshset(ms_cp)
-        
+            dfaces = int(total_length*4)
+            ms = simplify_mesh(ms,dfaces,r_min,alpha_fraction)
         # Save mesh
-        ms.save_current_mesh(name,binary=False)
+        if save:
+            ms.save_current_mesh(name,binary=False)
         return ms
 
 

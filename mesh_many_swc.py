@@ -1,4 +1,4 @@
-from src.Swc import Swc
+from src import Swc
 import argparse
 import time
 import os
@@ -12,6 +12,7 @@ if __name__ =='__main__':
     parser.add_argument("--output_dir",help="Output directory for meshes")
     args = parser.parse_args()
     input_dir = str(args.input_dir)
+    print(os.getcwd())
     files = os.listdir(input_dir)
     output = args.output_dir
 
@@ -22,7 +23,7 @@ if __name__ =='__main__':
 
     if not(os.path.isfile(log_file)):
         with open(log_file,'w') as f:
-            f.write(f'# Log file for {input} at {datetime.now()} \n')
+            f.write(f'# Log file for {input_dir} at {datetime.now()} \n')
             f.write(f'# Cell name | Mesh computation time (s) | number of vertices | number of faces | bad triangle ratio \n')
 
 

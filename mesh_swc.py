@@ -1,4 +1,4 @@
-from alphaSwc import Swc
+from src import Swc
 import argparse
 import time
 import os
