@@ -4,6 +4,7 @@ from numpy.linalg import norm
 import pymeshlab as mlab
 from .tendril import Tendril
 import os
+import itertools
 from .mesh_processing import simplify_mesh
 
 
@@ -60,7 +61,6 @@ class Swc():
         return None
     def write(self):
         """Write the processed swc file in swc format"""
-
         file = self.file.replace('.swc','_clean.swc')
         data = []
         N = len(self.position_data)
@@ -76,12 +76,25 @@ class Swc():
         return file
 
     def initialise_branches(self):
-        """"Creates branches along the neuron"""
+        """Creates branches along the neuron"""
         self.branches = create_branches(self.conn_data,self.type_data)
         return None
 
-    def make_mesh(self,simplify=False,alpha_fraction= None,output_dir=None,save=True):
-        """"Compute watertight surface mesh"""
+    def make_mesh(self,simplify=False,alpha_fraction= None,output_dir=None,save=True,min_faces = None):
+        '''Compute watertight surface mesh
+        Args:
+            self: swc object
+            simplify: (bool) flag to simplify after alpha wrapping stage
+            alpha_fraction: (float) postive parameter of alpha wrapping stage. 
+                Default depends on the ratio of the minimum cross-sectional radius and the diagonal of a bounding box.
+            output_dir: (string) directory to save the mesh into. Defaults to same location as swc file.
+            save: (bool) flag to save the mesh. Defaults to true.
+            min_faces: (int) flag to indicate minimum possible number of faces. Defaults to a computed value depending on the length of the cell.
+        
+        Returns:
+            ms: (MeshSet) watertight surface mesh of the cell.
+        
+        '''
 
         # Store output information
         if output_dir == None:
@@ -140,12 +153,17 @@ class Swc():
         # Apply alpha_wrap filter
         print(f'Applying alpha wrap to {self.file}')
         ms.generate_alpha_wrap(alpha_fraction = alpha_fraction,offset_fraction =alpha_fraction/30)
+        ms.save_current_mesh('alpha.ply',binary=False)
         # Begin simplification
         if simplify:
             edges = np.linalg.norm(p[c[c[:,1]>-1,0],:] - p[c[c[:,1]>-1,1],:],axis = 1)
             total_length = sum(edges)
             dfaces = int(total_length*4)
-            ms = simplify_mesh(ms,dfaces,r_min,alpha_fraction)
+            if min_faces is None or int(min_faces)<dfaces:
+                min_faces = dfaces
+            else:
+                min_faces = int(min_faces)
+            ms = simplify_mesh(ms,dfaces,r_min,min_faces)
         # Save mesh
         if save:
             ms.save_current_mesh(name,binary=False)
@@ -153,7 +171,12 @@ class Swc():
 
 
 def get_bbox_diag(p):
-    '''Returns diagonal of a bounding box for point cloud p'''
+    '''Returns diagonal of a bounding box for point cloud p
+    Args:
+        p: (N,3) array of floats
+    Returns:
+        diag: (float)
+    '''
     min_x = min(p[:,0])
     min_y = min(p[:,1])
     min_z = min(p[:,2])
@@ -167,7 +190,17 @@ def get_bbox_diag(p):
     
 
 def extract_swc(file):
-    '''Extracts the position data, radius data, connectivity data and the type data from a swc file'''
+    '''Extracts the position data, radius data, connectivity data and the type data from a swc file
+    Args:
+        file: (string) swc file to be read.
+    Returns:
+        position_data: (N,3) array of floats of 3d postitions of nodes.
+        radius_data: (N,) array of positive floats of cross-sectional radii of nodes.
+        conn_data: (N,2) array of intergers of child parent pairs of nodes.
+        type_data: (N,) array of intergers of the type of each node.
+        preamble: string array of initial lines from swc file.
+    
+    '''
 
     position_data = []
     radius_data = []
@@ -218,12 +251,6 @@ def extract_swc(file):
                     msg = "Soma absent. Convert the first point to soma."
                     warnings.warn(msg, RuntimeWarning, stacklevel=2)
 
-                # if parent_id >= id:
-                    # msg = " ".join((
-                    #     f"Node id {line[0]}:",
-                    #     "parent id must be less than children id."))
-                    # raise ValueError(msg)
-
                 if id < 0:
                     msg = f"Node id {line[0]}: negative compartment ID."
                     raise ValueError(msg)
@@ -255,7 +282,22 @@ def extract_swc(file):
     return position_data , radius_data, conn_data , type_data, preamble
 
 def add_node_between_parent(i,num_points,position_data,radius_data,conn_data,type_data):
-    "Adds linearly interpolated node between a node and it's parent"
+    '''Adds linearly interpolated node between a node i and it's parent
+    Args:
+        i: (int) node to be merged with parent.
+        num_points: (int) number of nodes to be inserted.
+        position_data: (N,3) array of floats of 3d postitions of nodes.
+        radius_data: (N,) array of positive floats of cross-sectional radii of nodes.
+        conn_data: (N,2) array of intergers of child parent pairs of nodes.
+        type_data: (N,) array of intergers of the type of each node.
+
+    Returns:
+        new_position_data: (N+num_points,3) array of floats of 3d postitions of nodes.
+        new_radius_data: (N+num_points,) array of positive floats of cross-sectional radii of nodes.
+        new_conn_data: (N+num_points,2) array of intergers of child parent pairs of nodes.
+        new_type_data: (N+num_points,) array of intergers of the type of each node.
+    
+    '''
     N = len(position_data) + num_points
     parent_id = conn_data[i][1]
     p = position_data[i]
@@ -293,7 +335,21 @@ def add_node_between_parent(i,num_points,position_data,radius_data,conn_data,typ
     return new_position_data,new_radius_data,np.array(new_conn_data,dtype = int),np.array(new_type_data,dtype = int)
 
 def node_merge_with_parent(i,position_data,radius_data,conn_data,type_data):
-    "Merges a node with it's parent"
+    '''Merges a node i with it's parent
+    Args:
+        i: (int) node to be merged with parent.
+        position_data: (N,3) array of floats of 3d postitions of nodes.
+        radius_data: (N,) array of positive floats of cross-sectional radii of nodes.
+        conn_data: (N,2) array of intergers of child parent pairs of nodes.
+        type_data: (N,) array of intergers of the type of each node.
+
+    Returns:
+        new_position_data: (N-1,3) array of floats of 3d postitions of nodes.
+        new_radius_data: (N-1,) array of positive floats of cross-sectional radii of nodes.
+        new_conn_data: (N-1,2) array of intergers of child parent pairs of nodes.
+        new_type_data: (N-1,) array of intergers of the type of each node.
+
+    '''
     N = len(position_data) - 1
     parent_id = conn_data[i][1]
     p = position_data[i]
@@ -332,11 +388,28 @@ def node_merge_with_parent(i,position_data,radius_data,conn_data,type_data):
     return  new_position_data,new_radius_data,np.array(new_conn_data,dtype = int),np.array(new_type_data,dtype = int)
 
 def smooth_swc(position_data,radius_data,conn_data,type_data,Delta):
+    '''Smooths the swc file, by iterating through it and merging and inserting nodes
+    Args:
+        position_data: (N,3) array of floats of 3d postitions of nodes.
+        radius_data: (N,) array of positive floats of cross-sectional radii of nodes.
+        conn_data: (N,2) array of intergers of child parent pairs of nodes.
+        type_data: (N,) array of intergers of the type of each node.
+        Delta: (float) postive smoothing distance.
+
+    Returns:
+        position_data: (N,3) array of floats of 3d postitions of nodes.
+        radius_data: (N,) array of positive floats of cross-sectional radii of nodes.
+        conn_data: (N,2) array of intergers of child parent pairs of nodes.
+        type_data: (N,) array of intergers of the type of each node.
+
+    '''
     N = len(position_data)
+    # For efficiency, number of children are calculated once, and then updated as nodes are inserted/added.
     num_children = [int(sum(conn_data[:,1] == i)) for i in range(0,N)]
     i = 0
     while i < N:
         p = position_data[i]
+        # Check node is not a soma node or direct child of soma node.
         if conn_data[i][1] >= 0  and type_data[i] != 1 and type_data[conn_data[i][1]] != 1:
             parent_id = conn_data[i][1]
             q = position_data[parent_id]
@@ -345,12 +418,12 @@ def smooth_swc(position_data,radius_data,conn_data,type_data,Delta):
             radius_ratio_flag = r/R >2 or R/r >2
             num_siblings = num_children[parent_id] - 1
             if norm(p-q) < Delta and num_children[i] == 1 and num_siblings == 0 and not(radius_ratio_flag):
-                'Merge nodes'
+                # Merge nodes
                 position_data,radius_data,conn_data,type_data = node_merge_with_parent(i,position_data,radius_data,conn_data,type_data)
                 N = N -1
                 num_children.pop(i)
             elif radius_ratio_flag:
-                'Add interpolated nodes'
+                # Add interpolated nodes as radii change drastically
                 num_points = int(np.min([3,np.floor(np.max([r/R,R/r]))]))
                 position_data,radius_data,conn_data,type_data= add_node_between_parent(i,num_points,position_data,radius_data,conn_data,type_data)
                 i = i + num_points + 1
@@ -359,7 +432,7 @@ def smooth_swc(position_data,radius_data,conn_data,type_data,Delta):
                     num_children.insert(i+j,1)
                 
             elif norm(p-q) > 2*Delta:
-                'Add interpolated nodes'
+                # Add interpolated nodes as nodes too far apart
                 num_points = int(np.min([3,np.floor(norm(p-q)/Delta - 1)]))
                 position_data,radius_data,conn_data,type_data= add_node_between_parent(i,num_points,position_data,radius_data,conn_data,type_data)
                 i = i + num_points + 1
@@ -374,21 +447,42 @@ def smooth_swc(position_data,radius_data,conn_data,type_data,Delta):
 
 
 def  interpolate_swc( position_data , radius_data, conn_data , type_data,delta):
-    soma_ind = np.where(type_data==1)[0]
-    soma_position = position_data[soma_ind]
-    max_soma_radii = np.max(radius_data[soma_ind])
+    '''Pass through swc nodes, inserting nodes where they are required.
+    Insertions are required when:
+     - adjacent nodes are more than delta apart
+     - two nodes each with multiple children would not intersect each other when represented as spheres.
+
+    Args:
+        position_data: (N,3) array of floats of 3d postitions of nodes.
+        radius_data: (N,) array of positive floats of cross-sectional radii of nodes.
+        conn_data: (N,2) array of intergers of child parent pairs of nodes.
+        type_data: (N,) array of intergers of the type of each node.
+        delta: (float) postive interpolation distance.
+
+    Returns:
+        position_data: (N,3) array of floats of 3d postitions of nodes.
+        radius_data: (N,) array of positive floats of cross-sectional radii of nodes.
+        conn_data: (N,2) array of intergers of child parent pairs of nodes.
+        type_data: (N,) array of intergers of the type of each node.
+
+    '''
+
     i = -1
     N = len(position_data)
+    num_children = [int(sum(conn_data[:,1] == i)) for i in range(0,N)]
     while i < N - 1:
         i = i + 1
         if conn_data[i][1] != -1 and type_data[i] != 1:
             p = position_data[i]
             parent_id = conn_data[i][1]
             q = position_data[parent_id]
-            if norm(p-q) >= 2*delta:
+            r_min = min([radius_data[i],radius_data[parent_id]])
+            if norm(p-q) >= delta or (norm(p-q) >= r_min and num_children[i] > 1 and num_children[parent_id] > 1):
                 'Add interpolated nodes'
-                num_points = int(np.floor(norm(p-q)/delta - 1))
+                num_points = max([int(np.floor(norm(p-q)/delta - 1)),1])
                 position_data,radius_data,conn_data,type_data= add_node_between_parent(i,num_points,position_data,radius_data,conn_data,type_data)
+                for j in range(0,num_points):
+                    num_children.insert(i+j,1)
                 i = i + num_points
                 N = N + num_points
         
@@ -396,6 +490,15 @@ def  interpolate_swc( position_data , radius_data, conn_data , type_data,delta):
 
 
 def create_branches(conn_data,type_data):
+    '''Passes through the swc file and returns a classification of all nodes into branches or junctions.
+        A junction node i will have branches[i] = -1. A node i in branche j will have branches[i] = j.
+        Args:  
+            conn_data: (N,2) array of intergers of child parent pairs of nodes.
+            type_data: (N,) array of intergers of the type of each node.
+        Returns:
+            branches: (N,) array of intergers representing the segment to which each node belongs.
+    '''
+
     N = len(conn_data)
     branches = np.zeros(N,dtype=int)
     id = 1
@@ -420,21 +523,43 @@ def create_branches(conn_data,type_data):
     return branches
 
 def reorder_swc(position_data,radius_data,conn_data,type_data):
-    '''Reorders nodes to ensure parents always come before children'''
+    '''Reorders nodes to ensure parents always come before children.
+    
+    Args:
+        position_data: (N,3) array of floats of 3d postitions of nodes.
+        radius_data: (N,) array of positive floats of cross-sectional radii of nodes.
+        conn_data: (N,2) array of intergers of child parent pairs of nodes.
+        type_data: (N,) array of intergers of the type of each node.
+    
+    Returns:
+        position_data: (N,3) array of floats of 3d postitions of nodes.
+        radius_data: (N,) array of positive floats of cross-sectional radii of nodes.
+        conn_data: (N,2) array of intergers of child parent pairs of nodes.
+        type_data: (N,) array of intergers of the type of each node.
+
+    '''
+
+    # Identify source node
     N = len(conn_data)
-    permutation = np.zeros(N)
     nodes = conn_data[:,0]
     parents = conn_data[:,1]
     source = nodes[parents == -1]
     if len(source) > 1:
         error('Swc file can only have one source node');
+    
+    # Initialise a permutation which will send the source node to the first position.
+    # New data will be given by new_data = original_data[permutation]
+    permutation = np.zeros(N)
     permutation[source] = 0
     permutation[0] = source
     set= 0
     start_node = 0
 
-    permutation,set = reorder(start_node,set,nodes,parents,permutation)
+    # Create permutation
+    permutation,_ = reorder(start_node,set,nodes,parents,permutation)
     permutation = np.array(permutation).astype(int)
+    
+    # Reorder data based on this permutation
     conn_data = conn_data[permutation]
     for i in range(0,N):
         mask = conn_data == conn_data[i,0]
@@ -449,6 +574,18 @@ def reorder_swc(position_data,radius_data,conn_data,type_data):
     return position_data,radius_data,conn_data,type_data
 
 def  reorder(start_node,set,nodes,parents,permutation):
+    '''A recursive function to build the permutation to reorder the swc file.
+    Args:
+        start_node: (int) node under consideration. It has already been correctly ordered.
+        set: (int) the number of nodes already considered. This is also the value, permutation[set] = start_node.
+        nodes: (N,) array of intergers of the node indices.
+        parents: (N,) array of intergers of the parent node indices.
+        permutation: (N,) array of intergers representing a permutation in S_n.
+    Returns:
+        permutation: Updated (N,) array of intergers representing a permutation in S_n.
+        set: (int) Updated number of nodes already considered.
+    '''
+    # Find children
     children = np.where(parents == start_node)[0]
     for i in range(0,len(children)):
         set = set + 1

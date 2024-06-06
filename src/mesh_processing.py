@@ -52,6 +52,8 @@ def is_watertight(ms):
 
     Args:
         ms (mlab.Mesh or mlab.MeshSet): mesh.
+    Returns:
+        flag: (bool) flag for surface being watertight.
     """
 
     tmesh = mlab2tmesh(ms)
@@ -64,7 +66,9 @@ def simplify_mesh_first(ms,targetfacenum):
     
     Args:
         ms (mlab.MeshSet): mesh
-    
+    Returns:
+        ms: (MeshSet)
+        flag: (bool) flag for surface being watertight.
     """
     # Apply edge collapse
     old_number = ms.current_mesh().face_number()
@@ -76,22 +80,16 @@ def simplify_mesh_first(ms,targetfacenum):
     return ms,flag
 
 def simplify_mesh_further(ms,targetfacenum,r_min):
-    """Apply iterative remeshing to simplify mesh using quadric edge collapse
+    """Apply remeshing to simplify mesh using quadric edge collapse
     
     Args:
         ms (mlab.MeshSet): mesh
+    Returns:
+        ms: (MeshSet)
     
     """
     # Apply edge collapse
-    old_number = ms.current_mesh().face_number()
-    d = ms.get_geometric_measures()
-    bbox = d['bbox']
-    ms.meshing_isotropic_explicit_remeshing(
-                iterations = 7,
-                adaptive = True,
-                targetlen = mlab.PercentageValue(100*r_min/bbox.diagonal()),
-                checksurfdist = False
-            )
+    
     ms.meshing_decimation_quadric_edge_collapse(
         targetfacenum=int(targetfacenum),
         preservetopology  = True,
@@ -102,51 +100,79 @@ def simplify_mesh_further(ms,targetfacenum,r_min):
         planarweight=0.002
         )
     flag = is_watertight(ms)
-    new_number = ms.current_mesh().face_number()
-    print(f'Old number of faces = {old_number} ,new number of faces = {new_number}')
+    
     return ms,flag
 
-def simplify_mesh(ms,dfaces,r_min,alpha_fraction):
+def simplify_mesh(ms,dfaces,r_min,min_faces):
+    '''Apply remeshing using quadric edge collapse and isotropic remeshing to reduce the number of vertices
+    Given a initially very small target number of faces, we remesh the surface mesh to have that number of faces. 
+    If it is watertight, this mesh is returned. Else, the target number of faces is increased by a fixed increment and the original mesh is remeshed to this target.
+
+    Args:
+        ms: (MeshSet)
+        dfaces: (int) increments to increase the desired number of faces until a watertight mesh is produced.
+        r_min: (float) minimum cross-sectional radius of the swc file.
+        min_faces: (int) initial number of target faces.
+    Returns:
+        ms: (MeshSet)
+    
+    '''
+    
+    # Save the original mesh
+    ms_alpha = dcp_meshset(ms)
+
+
     print('Applying first simplification')
-    attempt = 1
+    
+    
+    # Initial isotropic remeshing step.
+    attempt = 1 
     flag = False
+    dfaces = 2*dfaces
+    old_number = ms.current_mesh().face_number()
+    d = ms.get_geometric_measures()
+    bbox = d['bbox']
+    ms.meshing_isotropic_explicit_remeshing(
+                iterations = 7,
+                adaptive = True,
+                targetlen = mlab.PercentageValue(100*r_min/bbox.diagonal()),
+                checksurfdist = False
+            )
+    
+    # Save new mesh
     ms_cp = dcp_meshset(ms)
-    while not(flag) and attempt < 16:
+
+    # Attempt aggressive simplification on the new mesh.
+    agg_simp_terminated = False
+    while not(flag) and attempt < 50:
         if attempt*dfaces > ms.current_mesh().face_number():
+            agg_simp_terminated = True
             break
         print(f'Applying simplification, attempt = {attempt}')
-        ms,flag = simplify_mesh_first(ms,attempt*dfaces)
+        
+        ms,flag = simplify_mesh_further(ms,(attempt-1)*dfaces + min_faces,r_min)
+        new_number = ms.current_mesh().face_number()
+        print(f'Old number of faces = {old_number} ,new number of faces = {new_number}, watertight = {flag}')
         attempt+= 1
         if not(flag):
             ms = dcp_meshset(ms_cp)
-
-    if not(flag):
-        print('First simplification failed, try with coarser alpha mesh')
-        ms.generate_alpha_wrap(alpha_fraction = 5*alpha_fraction,offset_fraction =alpha_fraction/30)
+    
+    # If previous attempt failed, conduct emergency remeshing on the original mesh.
+    if (attempt == 50 and not(flag)) or agg_simp_terminated:
+        ms = dcp_meshset(ms_alpha)
+        print('Emergency remeshing')
         attempt = 1
         flag = False
         ms_cp = dcp_meshset(ms)
-        while not(flag) and attempt < 16:
-            if attempt*dfaces > ms.current_mesh().face_number():
+        while not(flag):
+            if attempt*dfaces > 2*ms.current_mesh().face_number()/3:
                 break
             print(f'Applying simplification, attempt = {attempt}')
-            ms,flag = simplify_mesh_first(ms,attempt*dfaces)
+            ms,flag = simplify_mesh_first(ms,(attempt-1)*dfaces + min_faces)
             attempt+= 1
             if not(flag):
                 ms = dcp_meshset(ms_cp)
 
-    print('Applying second simplification')
-    attempt = 1
-    flag = False
-    dfaces = 2*dfaces
-    ms_cp = dcp_meshset(ms)
-    while not(flag) and attempt < 16:
-        if attempt*dfaces > ms.current_mesh().face_number():
-            break
-        print(f'Applying simplification, attempt = {attempt}')
-        ms,flag = simplify_mesh_further(ms,attempt*dfaces,r_min)
-        attempt+= 1
-        if not(flag):
-            ms = dcp_meshset(ms_cp)
+    # Return ms, the smallest watertight mesh we can construct from the original.
     return ms
 

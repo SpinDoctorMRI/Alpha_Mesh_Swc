@@ -109,7 +109,11 @@ class Tendril():
         self.L = L
         return self
     def make_mesh(self,v_S,f_S):
-        """Makes tubular mesh"""
+        """Makes tubular mesh
+        Args:
+            v_S: (N,3) array of vertices from a unit sphere mesh.
+            f_S: (M,3) array of faces from a unit sphere mesh.
+        """
 
         # Create initial disk and judge length of step size
         n = int(max([5,np.floor(15*np.mean(self.r))]))
