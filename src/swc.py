@@ -5,8 +5,8 @@ import pymeshlab as mlab
 from .tendril import Tendril
 import os
 import itertools
-from .mesh_processing import simplify_mesh
-
+from .mesh_processing import simplify_mesh, dcp_meshset, is_watertight
+import time
 
 class Swc():
     '''Class to store and process nodes from swc data. This class stores the skeleton information we get from the swc files
@@ -33,20 +33,34 @@ class Swc():
     def __init__(self,
                  file= None,
                  process = False,
+                 reorder = True,
                  Delta = 2.0,
                  delta = 1.0
                  ):
         
+        # Store separate timings of all steps.
+        self.timings = dict()
+        start = time.time()
+
         # Read file and check for correct ordering
         self.file = file
         position_data , radius_data, conn_data , type_data,preamble = extract_swc(self.file)
-        position_data , radius_data, conn_data , type_data = reorder_swc(position_data,radius_data,conn_data,type_data)
-
+        self.timings['extract_swc'] = time.time() - start
+        start = time.time()
+        if reorder:
+            position_data , radius_data, conn_data , type_data = reorder_swc(position_data,radius_data,conn_data,type_data)
+            self.timings['reorder_swc'] = time.time() - start
         # Apply processing
         if process:
+            start = time.time()
+            if not(reorder):
+                msg = f'Must reorder swc file {file} before processing.'
+                warnings.warn(msg, RuntimeWarning, stacklevel=2)
+                position_data , radius_data, conn_data , type_data = reorder_swc(position_data,radius_data,conn_data,type_data)
+                
             position_data , radius_data, conn_data , type_data = smooth_swc( position_data , radius_data, conn_data , type_data,Delta)
             position_data , radius_data, conn_data , type_data = interpolate_swc( position_data , radius_data, conn_data , type_data,delta)
-
+            self.timings['process_swc'] = time.time() - start
         # Store information
         self.position_data = position_data
         self.radius_data =radius_data
@@ -55,8 +69,11 @@ class Swc():
         self.process = process
         self.preamble = preamble
         # Compute branches
+        start = time.time()
         self.initialise_branches()
+        self.timings['initialise_branches'] = time.time() - start
         self.Delta = Delta
+        
 
         return None
     def write(self):
@@ -65,8 +82,9 @@ class Swc():
         data = []
         N = len(self.position_data)
         conn_data= np.copy(self.conn_data)
+        source_nodes = conn_data[:,1] == -1
         conn_data[:,0] = conn_data[:,0] + 1
-        conn_data[1:,1] = conn_data[1:,1] + 1
+        conn_data[~source_nodes,1] = conn_data[~source_nodes,1] + 1
         for i in range(0,N):    
             entry = '{0} {1} {2} {3} {4} {5} {6} \n'.format(conn_data[i,0],self.type_data[i],self.position_data[i,0],self.position_data[i,1],self.position_data[i,2],self.radius_data[i],conn_data[i,1])
             data.append(entry)
@@ -80,7 +98,56 @@ class Swc():
         self.branches = create_branches(self.conn_data,self.type_data)
         return None
 
-    def make_mesh(self,simplify=False,alpha_fraction= None,output_dir=None,save=True,min_faces = None):
+    def _build_initial_mesh(self):
+        '''Produce the inital non-watertight mesh by placing spheres at somas and junctions and tubular meshes along branches'''
+        ms = mlab.MeshSet()
+        ms.create_sphere(radius = 1)
+        v_S = ms.current_mesh().vertex_matrix()
+        f_S = ms.current_mesh().face_matrix()
+        b = self.branches
+        p = self.position_data
+        r = self.radius_data
+        t = self.type_data
+        c = self.conn_data
+        N = len(r)
+        ms = mlab.MeshSet()
+        start = time.time()
+        # Place spheres at somas
+        for i in range(0,N):
+            if t[i] == 1:    
+                m = mlab.Mesh(vertex_matrix = p[i] + r[i]*v_S,face_matrix = f_S)
+                ms.add_mesh(m)
+
+        # Produce tubular meshes along branches
+        branch_ids = np.unique(b)
+        for branch in branch_ids:
+            if branch >0:
+                
+                # Get relevent nodes for this branch
+                nodes =np.where(b == branch)[0]
+                nodes = np.hstack((c[nodes[0],1],nodes))
+                n = np.where(c[:,1] == nodes[-1])[0]
+                if len(n)>0:
+                    nodes = np.hstack((nodes,n[0]))
+                # Create tubular mesh
+                tendril = Tendril(nodes,self,self.Delta)
+                v,f= tendril.make_mesh(v_S,f_S)
+                # Store mesh
+                m = mlab.Mesh(vertex_matrix = v,face_matrix =f)
+                ms.add_mesh(m)
+
+        self.timings['initialising_individual_meshes'] = time.time() - start
+
+        # Merge individual meshes 
+        start = time.time()
+        print(f'merging {ms.mesh_number()} meshes')
+        ms.generate_by_merging_visible_meshes()
+        self.timings['merging_individual_meshes'] = time.time() - start
+        return ms
+
+
+
+    def make_mesh(self,simplify=False,alpha_fraction= None,output_dir=None,save=True,min_faces = None,dfaces=None,output_alpha_mesh=False):
         '''Compute watertight surface mesh
         Args:
             self: swc object
@@ -109,66 +176,40 @@ class Swc():
             alpha_fraction = min(self.radius_data)/diag
         
         # Compute individual meshes
-
-        ms = mlab.MeshSet()
-        ms.create_sphere(radius = 1)
-        v_S = ms.current_mesh().vertex_matrix()
-        f_S = ms.current_mesh().face_matrix()
-        b = self.branches
-        p = self.position_data
-        r = self.radius_data
-        t = self.type_data
-        c = self.conn_data
-        N = len(r)
-        ms = mlab.MeshSet()
-        r_min = min(r)
-        # Place spheres at somas
-        for i in range(0,N):
-            if t[i] == 1:    
-                m = mlab.Mesh(vertex_matrix = p[i] + r[i]*v_S,face_matrix = f_S)
-                ms.add_mesh(m)
-
-        # Produce tubular meshes along branches
-        branch_ids = np.unique(b)
-        for branch in branch_ids:
-            if branch >0:
-                
-                # Get relevent nodes for this branch
-                nodes =np.where(b == branch)[0]
-                nodes = np.hstack((c[nodes[0],1],nodes))
-                n = np.where(c[:,1] == nodes[-1])[0]
-                if len(n)>0:
-                    nodes = np.hstack((nodes,n[0]))
-                # Create tubular mesh
-                tendril = Tendril(nodes,self,self.Delta)
-                v,f= tendril.make_mesh(v_S,f_S)
-                # Store mesh
-                m = mlab.Mesh(vertex_matrix = v,face_matrix =f)
-                ms.add_mesh(m)
-
-        # Merge individual meshes 
-        print(f'merging {ms.mesh_number()} meshes')
-        ms.generate_by_merging_visible_meshes()
-
+        ms = self._build_initial_mesh()
+        
         # Apply alpha_wrap filter
-        print(f'Applying alpha wrap to {self.file}')
+        start = time.time()
+        print(f'Applying alpha wrap to {self.file} with alpha = {alpha_fraction}')
         ms.generate_alpha_wrap(alpha_fraction = alpha_fraction,offset_fraction =alpha_fraction/30)
-        ms.save_current_mesh('alpha.ply',binary=False)
+        self.timings['alpha_wrap'] = time.time() - start
+        if output_alpha_mesh:
+            ms_alpha = dcp_meshset(ms)
+        else:
+            ms_alpha = None
         # Begin simplification
         if simplify:
-            edges = np.linalg.norm(p[c[c[:,1]>-1,0],:] - p[c[c[:,1]>-1,1],:],axis = 1)
-            total_length = sum(edges)
-            dfaces = int(total_length*4)
-            if min_faces is None or int(min_faces)<dfaces:
-                min_faces = dfaces
+            start = time.time()
+            if dfaces is None:
+                total_length = self.get_length()
+                dfaces = int(total_length*8)
+            if min_faces is None or int(min_faces)<dfaces/2:
+                min_faces = int(dfaces/2)
             else:
-                min_faces = int(min_faces)
-            ms = simplify_mesh(ms,dfaces,r_min,min_faces)
+                min_faces = int(min_faces/2)
+            print(f'Simplifying {self.file} to at least {min_faces} faces')
+            ms = simplify_mesh(ms,dfaces,min(self.radius_data),min_faces)
+            self.timings['simplify_mesh'] = time.time() - start
         # Save mesh
         if save:
             ms.save_current_mesh(name,binary=False)
-        return ms
-
+        return ms ,name,ms_alpha
+    
+    def get_length(self):
+        '''Returns the total length of the swc file'''
+        edges = np.linalg.norm(self.position_data[self.conn_data[self.conn_data[:,1]>-1,0],:] - self.position_data[self.conn_data[self.conn_data[:,1]>-1,1],:],axis = 1)
+        total_length = sum(edges)
+        return total_length
 
 def get_bbox_diag(p):
     '''Returns diagonal of a bounding box for point cloud p
@@ -257,7 +298,8 @@ def extract_swc(file):
 
                 if radius <= 0:
                     msg = f"Node id {line[0]}: negative radius."
-                    raise ValueError(msg)
+                    radius = -radius
+                    warnings.warn(msg,Warning)
                 # if radius < 0.1:
                 #     radius = 0.1
 
@@ -538,25 +580,38 @@ def reorder_swc(position_data,radius_data,conn_data,type_data):
         type_data: (N,) array of intergers of the type of each node.
 
     '''
-
+    print("Reordering swc")
     # Identify source node
     N = len(conn_data)
     nodes = conn_data[:,0]
     parents = conn_data[:,1]
     source = nodes[parents == -1]
-    if len(source) > 1:
-        error('Swc file can only have one source node');
-    
+    # if len(source) > 1:
+    #     msg = f'swc file has {len(source)} source nodes.'
+    #     raise ValueError(msg)
+
     # Initialise a permutation which will send the source node to the first position.
     # New data will be given by new_data = original_data[permutation]
+    # permutation = np.zeros(N)
+    # permutation[source] = 0
+    # permutation[0] = source
+    # set= 0
+    # start_node = 0
+
+    # # Create permutation
+    # permutation,_ = reorder(start_node,set,nodes,parents,permutation)
+
     permutation = np.zeros(N)
-    permutation[source] = 0
-    permutation[0] = source
-    set= 0
-    start_node = 0
+    # permutation[source[0]] = 0
+    permutation[0] = source[0]
+    set= -1
 
     # Create permutation
-    permutation,_ = reorder(start_node,set,nodes,parents,permutation)
+    for i in source:
+        set = set + 1
+        permutation[set] = i
+        permutation,set = reorder(i,set,nodes,parents,permutation)
+
     permutation = np.array(permutation).astype(int)
     
     # Reorder data based on this permutation
@@ -573,7 +628,7 @@ def reorder_swc(position_data,radius_data,conn_data,type_data):
 
     return position_data,radius_data,conn_data,type_data
 
-def  reorder(start_node,set,nodes,parents,permutation):
+def reorder(start_node,set,nodes,parents,permutation):
     '''A recursive function to build the permutation to reorder the swc file.
     Args:
         start_node: (int) node under consideration. It has already been correctly ordered.

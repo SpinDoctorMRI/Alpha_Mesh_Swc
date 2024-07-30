@@ -1,4 +1,4 @@
-from distutils.core import setup
+from setuptools import setup, find_packages
 
 setup(  name='alphaSwc',
         version='1.0',
@@ -6,13 +6,14 @@ setup(  name='alphaSwc',
         author ='Alex McSweeney-Davis',
         author_email='alex@mcsweeney-davis.com',
         url='https://github.com/alexmcsd/alphaSwc',
-        packages=['alphaSwc'],
+        packages=['src'],
         python_requires='>=3.8',
         install_requires=[
         'numpy',
         'scipy',
         'trimesh',
         'pymeshlab>=2023.12.post1',
+        
         ],
         include_package_data=True,
 

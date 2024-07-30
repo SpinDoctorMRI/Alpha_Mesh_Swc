@@ -1,6 +1,8 @@
 import numpy as np
 import pymeshlab as mlab
 from trimesh import Trimesh
+import os
+from .pytetgen import call_tetgen
 
 def dcp_meshset(meshset):
     """Make a deepcopy of mlab.MeshSet."""
@@ -48,36 +50,39 @@ def mlab2tmesh(ms):
 
 
 def is_watertight(ms):
-    """Check whether the mesh is watertight using trimesh routine.
+    """Check whether the mesh is watertight using trimesh routine and tetgen.
 
     Args:
         ms (mlab.Mesh or mlab.MeshSet): mesh.
     Returns:
         flag: (bool) flag for surface being watertight.
     """
-
+    # Apply a quick check using trimesh. 
     tmesh = mlab2tmesh(ms)
-    ms.compute_selection_by_self_intersections_per_face()
-    num_intersections = ms.current_mesh().selected_face_number()
-    return tmesh.is_watertight  and (num_intersections == 0)
-
-def simplify_mesh_first(ms,targetfacenum):
-    """Apply iterative remeshing to simplify mesh using quadric edge collapse
     
+    # if not(tmesh.is_watertight):
+    #     # Quick check but may have false negative, so check with tetgen
+    #     return is_watertight_tetgen(ms)
+    # else:
+    #     return  True
+    return tmesh.is_watertight and is_watertight_tetgen(ms)
+
+def is_watertight_tetgen(ms):
+    """Check whether the mesh is watertight using tetgen routine.
+
     Args:
-        ms (mlab.MeshSet): mesh
+        ms (mlab.Mesh or mlab.MeshSet): mesh.
     Returns:
-        ms: (MeshSet)
         flag: (bool) flag for surface being watertight.
     """
-    # Apply edge collapse
-    old_number = ms.current_mesh().face_number()
-    ms.meshing_decimation_quadric_edge_collapse(targetfacenum = int(targetfacenum),preservetopology  = True,planarquadric=True,qualitythr = 0.3)
-    new_number = ms.current_mesh().face_number()
-    print(f'Old number of faces = {old_number} ,new number of faces = {new_number}')
-    flag = is_watertight(ms)
-
-    return ms,flag
+    
+    ms.save_current_mesh('test.ply',binary=False)
+    output =   call_tetgen('test.ply','-dBENF')
+    # output = os.popen('tetgen -dBENF test.ply').read()
+    # print(output)
+    print('Removing surface mesh file')
+    os.remove('test.ply')
+    return 'No faces are intersecting.' in output
 
 def simplify_mesh_further(ms,targetfacenum,r_min):
     """Apply remeshing to simplify mesh using quadric edge collapse
@@ -128,7 +133,6 @@ def simplify_mesh(ms,dfaces,r_min,min_faces):
     # Initial isotropic remeshing step.
     attempt = 1 
     flag = False
-    dfaces = 2*dfaces
     old_number = ms.current_mesh().face_number()
     d = ms.get_geometric_measures()
     bbox = d['bbox']
@@ -168,11 +172,16 @@ def simplify_mesh(ms,dfaces,r_min,min_faces):
             if attempt*dfaces > 2*ms.current_mesh().face_number()/3:
                 break
             print(f'Applying simplification, attempt = {attempt}')
-            ms,flag = simplify_mesh_first(ms,(attempt-1)*dfaces + min_faces)
+            ms,flag = simplify_mesh_further(ms,(attempt-1)*dfaces + min_faces,r_min)
+            new_number = ms.current_mesh().face_number()
+            print(f'Old number of faces = {old_number} ,new number of faces = {new_number}, watertight = {flag}')
             attempt+= 1
             if not(flag):
                 ms = dcp_meshset(ms_cp)
 
     # Return ms, the smallest watertight mesh we can construct from the original.
+    # only keep the largest component
+    ms.compute_selection_by_small_disconnected_components_per_face(nbfaceratio=0.99)
+    ms.meshing_remove_selected_vertices_and_faces()
     return ms
 
