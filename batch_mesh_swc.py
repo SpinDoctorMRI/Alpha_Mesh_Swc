@@ -17,7 +17,8 @@ def unit(file):
 
     print(f'Meshing {cellname}')
     # If a surface mesh does not already exist, create one.
-    if not(os.path.isfile(output_file)):
+    failed_file =os.path.join(os.path.dirname(output_file),'failed_meshes',os.path.basename(output_file))
+    if not(os.path.isfile(output_file)) and not(os.path.isfile(failed_file)):
         start = time.time()
         try:
             # Create swc object and make mesh.            
@@ -33,10 +34,11 @@ def unit(file):
                 print(f"Saved data for {cellname}")
         except Exception as e:
             print(f'Error with {cellname}:\n {repr(e)}') 
-            if not(os.path.isdir(f'{output_dir}/failed_meshes')):
-                print(f'Creating {output_dir}/failed_meshes')
-                os.mkdir(f'{output_dir}/failed_meshes')
-            os.rename(output_file,os.path.join(os.path.dirname(output_file),'failed_meshes',os.path.basename(output_file) ) )
+            if os.path.isfile(output_file):
+                if not(os.path.isdir(f'{output_dir}/failed_meshes')):
+                    print(f'Creating {output_dir}/failed_meshes')
+                    os.mkdir(f'{output_dir}/failed_meshes')
+                os.rename(output_file,failed_file )
             # Add in log file.
             with open('Failed_meshes.txt','a') as f:
                 f.write(f'{cellname}\n')
@@ -58,6 +60,7 @@ if __name__ =='__main__':
 
     # files = os.listdir(input_dir)
     files = glob.glob(f'{input_dir}/*/*/*.swc')
+    files.reverse()
     # files = [os.path.basename(file) for file in files]
     # Find output directory
     output_dir = args.output_dir

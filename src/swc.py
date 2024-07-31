@@ -7,7 +7,7 @@ import os
 import itertools
 from .mesh_processing import simplify_mesh, dcp_meshset, is_watertight
 import time
-
+import sys
 class Swc():
     '''Class to store and process nodes from swc data. This class stores the skeleton information we get from the swc files
     attributes:
@@ -606,14 +606,17 @@ def reorder_swc(position_data,radius_data,conn_data,type_data):
     permutation[0] = source[0]
     set= -1
 
+    recursion_limit = sys.getrecursionlimit()
+    if N > recursion_limit:
+        warnings.warn(f'Temporarily Increasing python recusion limit from {recursion_limit} to {N}')
+        sys.setrecursionlimit(N)
     # Create permutation
     for i in source:
         set = set + 1
         permutation[set] = i
         permutation,set = reorder(i,set,nodes,parents,permutation)
-
+    sys.setrecursionlimit(recursion_limit)
     permutation = np.array(permutation).astype(int)
-    
     # Reorder data based on this permutation
     conn_data = conn_data[permutation]
     for i in range(0,N):
