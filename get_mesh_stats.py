@@ -49,7 +49,7 @@ def mesh_stats(swc,ms,ms_alpha,mesh_name):
     print('Checking tetgen')
     timings = swc.timings
     # Time tetgen
-    tet_output = call_tetgen(mesh_name,'-pq1.1aVCBF')
+    tet_output = call_tetgen(mesh_name,'-pq1.2a1.0O9/7VCBF')
     print(tet_output)
     _,b = tet_output.split('Total running seconds: ')
     tetgen_time = float(b.split('\n')[0])

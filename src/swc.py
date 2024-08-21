@@ -48,7 +48,9 @@ class Swc():
         self.timings['extract_swc'] = time.time() - start
         start = time.time()
         if reorder:
-            position_data , radius_data, conn_data , type_data = reorder_swc(position_data,radius_data,conn_data,type_data)
+            if not(conn_data[0,1] == -1 and np.all(conn_data[1:,0]>conn_data[1:,1])):
+                print('Reordering swc')
+                position_data , radius_data, conn_data , type_data = reorder_swc(position_data,radius_data,conn_data,type_data)
             self.timings['reorder_swc'] = time.time() - start
         # Apply processing
         if process:
@@ -76,9 +78,10 @@ class Swc():
         
 
         return None
-    def write(self):
+    def write(self,append_clean=True):
         """Write the processed swc file in swc format"""
-        file = self.file.replace('.swc','_clean.swc')
+        if append_clean:
+            file = self.file.replace('.swc','_clean.swc')
         data = []
         N = len(self.position_data)
         conn_data= np.copy(self.conn_data)
@@ -86,7 +89,7 @@ class Swc():
         conn_data[:,0] = conn_data[:,0] + 1
         conn_data[~source_nodes,1] = conn_data[~source_nodes,1] + 1
         for i in range(0,N):    
-            entry = '{0} {1} {2} {3} {4} {5} {6} \n'.format(conn_data[i,0],self.type_data[i],self.position_data[i,0],self.position_data[i,1],self.position_data[i,2],self.radius_data[i],conn_data[i,1])
+            entry = '{0} {1} {2} {3} {4} {5} {6} \n'.format(int(conn_data[i,0]),int(self.type_data[i]),self.position_data[i,0],self.position_data[i,1],self.position_data[i,2],self.radius_data[i],int(conn_data[i,1]))
             data.append(entry)
         with open(file, 'w') as f:
             f.writelines(self.preamble)
@@ -173,7 +176,7 @@ class Swc():
         # Get value for alpha_fraction
         if alpha_fraction == None:
             diag= get_bbox_diag(self.position_data)
-            alpha_fraction = min(self.radius_data)/diag
+            alpha_fraction = max(2*min(self.radius_data)/diag,5e-4)
         
         # Compute individual meshes
         ms = self._build_initial_mesh()
@@ -198,7 +201,8 @@ class Swc():
             else:
                 min_faces = int(min_faces/2)
             print(f'Simplifying {self.file} to at least {min_faces} faces')
-            ms = simplify_mesh(ms,dfaces,min(self.radius_data),min_faces)
+            r_min = max(min(self.radius_data),0.05)
+            ms = simplify_mesh(ms,dfaces,r_min,min_faces)
             self.timings['simplify_mesh'] = time.time() - start
         # Save mesh
         if save:
@@ -288,26 +292,29 @@ def extract_swc(file):
                     parent_id = -1
 
                 if parent_id == -1 and node_type != 1:
-                    node_type = 1
-                    msg = "Soma absent. Convert the first point to soma."
+                    node_type = -1
+                    msg = "Soma absent. Convert the first point to synthetic soma."
                     warnings.warn(msg, RuntimeWarning, stacklevel=2)
 
                 if id < 0:
                     msg = f"Node id {line[0]}: negative compartment ID."
                     raise ValueError(msg)
 
-                if radius <= 0:
+                if radius < 0:
                     msg = f"Node id {line[0]}: negative radius."
                     radius = -radius
                     warnings.warn(msg,Warning)
+                if radius ==0:
+                    msg = f"Node id {line[0]}: radius 0."
+                    ValueError(msg)
                 # if radius < 0.1:
                 #     radius = 0.1
 
-                if node_type < 0 or node_type > 7:
+                if node_type < -1 or node_type > 7:
                     msg = " ".join((
                         f"Node id {line[0]}:",
                         "unknown compartment type."))
-                    raise TypeError(msg)
+                    warnings.warn(msg)
 
                 # record info
                 position_data.append(position)
@@ -546,7 +553,7 @@ def create_branches(conn_data,type_data):
     id = 1
     children = [np.where(conn_data[:,1] == i)[0] for i in range(0,N)]
     num_children = [len(c) for c in children]
-    junction_ind = [i for (i,n) in enumerate(num_children) if n > 1 or type_data[i] == 1]
+    junction_ind = [i for (i,n) in enumerate(num_children) if n > 1 or type_data[i] == 1 or type_data[i] == -1]
     i = 0
     while i <N:
         if i in junction_ind:

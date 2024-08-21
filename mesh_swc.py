@@ -10,7 +10,7 @@ if __name__ =='__main__':
     parser.add_argument("--output_dir",help="Output directory for mesh")
     parser.add_argument("--alpha",type=float,default=None,help="Alpha fraction for alpha wrapping")
 
-    parser.add_argument("--simplify",type=bool,help="Flag to simplify mesh",default=True)
+    parser.add_argument("--simplify",type=int,help="Flag to simplify mesh",default=1)
     parser.add_argument("--min_faces",type=int,help="Minimum faces for the mesh",default=None)
     parser.add_argument("--dfaces",type=int,help="Rate to increase target number of faces in mesh",default=None)
     parser.add_argument("--tetgen",type=str,help="Parameters to pass into TetGen",default=None)
@@ -22,9 +22,10 @@ if __name__ =='__main__':
     min_faces = args.min_faces
     alpha_fraction = args.alpha
     start = time.time()
-    swc = Swc(file,True,2.0,1.0)
+    swc = Swc(file,False,2.0,1.0)
     swc.write()
-    ms,mesh_name,_ = swc.make_mesh(simplify=args.simplify,output_dir=output_dir,min_faces=min_faces,alpha_fraction=alpha_fraction)
+    print(args.simplify)
+    ms,mesh_name,_ = swc.make_mesh(simplify=(args.simplify == 1),output_dir=output_dir,min_faces=min_faces,alpha_fraction=alpha_fraction)
     timings = swc.timings
 
     if args.tetgen is not None:

@@ -117,6 +117,7 @@ class Tendril():
 
         # Create initial disk and judge length of step size
         n = int(max([5,np.floor(15*np.mean(self.r))]))
+        # n=5
         v0 = make_initial_vertices(self,n)
         steps = int(max([np.floor(self.L/(2*np.pi*np.mean(self.r)/(np.sqrt(2)*n))),3]))
         

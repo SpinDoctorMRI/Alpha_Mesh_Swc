@@ -15,14 +15,14 @@ def unit(file):
     else:
         output_file = os.path.join(input_dir,cellname+".ply")
 
-    print(f'Meshing {cellname}')
+    print(f'Meshing {file}')
     # If a surface mesh does not already exist, create one.
     failed_file =os.path.join(os.path.dirname(output_file),'failed_meshes',os.path.basename(output_file))
     if not(os.path.isfile(output_file)) and not(os.path.isfile(failed_file)):
         start = time.time()
         try:
             # Create swc object and make mesh.            
-            swc = Swc(os.path.join(file),True,2.0,1.0)
+            swc = Swc(file,True,2.0,1.0)
             ms,mesh_name,ms_alpha = swc.make_mesh(simplify=True,output_dir=output_dir,output_alpha_mesh=store_data)
             print(f'Completed {cellname}, Elapsed time = {time.time() - start}')
             if store_data:
@@ -58,8 +58,8 @@ if __name__ =='__main__':
     input_dir = str(args.input_dir)
 
 
-    files =[file for file in  os.listdir(input_dir) if file.endswith('.swc')]
-    # files = glob.glob(f'{input_dir}/*/*/*.swc')
+    # files = os.listdir(input_dir)
+    files = glob.glob(f'{input_dir}/*/*/*.swc')
     # files.reverse()
     # files = [os.path.basename(file) for file in files]
     # Find output directory
@@ -78,5 +78,6 @@ if __name__ =='__main__':
     # Begin iterating through cells
     for file in files:
         # Parallel(n_jobs=10)(delayed(mesh_cell(file)) for file in files)
-        unit(f'{input_dir}/{file}')
+        # unit(f'{input_dir}/{file}')
+        unit(file)
     

@@ -148,8 +148,9 @@ def simplify_mesh(ms,dfaces,r_min,min_faces):
 
     # Attempt aggressive simplification on the new mesh.
     agg_simp_terminated = False
-    while not(flag) and attempt < 50:
-        if attempt*dfaces > ms.current_mesh().face_number():
+    new_number = 0
+    while not(flag) and attempt < 15:
+        if new_number> old_number:
             agg_simp_terminated = True
             break
         print(f'Applying simplification, attempt = {attempt}')
@@ -162,7 +163,7 @@ def simplify_mesh(ms,dfaces,r_min,min_faces):
             ms = dcp_meshset(ms_cp)
     
     # If previous attempt failed, conduct emergency remeshing on the original mesh.
-    if (attempt == 50 and not(flag)) or agg_simp_terminated:
+    if (attempt == 15 and not(flag)) or agg_simp_terminated:
         ms = dcp_meshset(ms_alpha)
         print('Emergency remeshing')
         attempt = 1
