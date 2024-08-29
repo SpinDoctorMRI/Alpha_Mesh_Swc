@@ -7,6 +7,7 @@ from pathlib import Path
 def call_tetgen(file,args='-d'):
     pytetgen_path =  Path(__file__)
     tetgen_base_path = os.path.dirname(pytetgen_path)
+
     if platform == 'win32':
         tetgen_cmd = f'{tetgen_base_path}/tetgen/win64/tetgen'
     elif platform =='darwin':

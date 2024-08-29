@@ -2,8 +2,9 @@ from src import Swc
 import argparse
 import time
 import os
-import pandas as pd
-import sqlite3
+# import pandas as pd
+# import sqlite3
+
 # from joblib import Parallel, delayed
 from get_mesh_stats import mesh_stats
 import glob
@@ -23,14 +24,19 @@ def unit(file):
         try:
             # Create swc object and make mesh.            
             swc = Swc(os.path.join(file),True,2.0,1.0)
-            ms,mesh_name,ms_alpha = swc.make_mesh(simplify=True,output_dir=output_dir,output_alpha_mesh=store_data)
+            ms,mesh_name,ms_alpha = swc.make_mesh(simplify=True,output_dir=output_dir,save_alpha_mesh=False)
             print(f'Completed {cellname}, Elapsed time = {time.time() - start}')
             if store_data:
+                print(mesh_name)
                 data = mesh_stats(swc,ms,ms_alpha,mesh_name)
                 # Store data
-                conn = sqlite3.connect(log_file)
-                data = pd.DataFrame(data)
-                data.to_sql('meshing_stats',conn,if_exists="append",index=False)
+                # conn = sqlite3.connect(log_file)
+                # data = pd.DataFrame(data)
+                # data.to_sql('meshing_stats',conn,if_exists="append",index=False)
+                with open(output_file.replace('.ply','_log.txt'),'w') as f:
+                    for key in data.keys():
+                        f.write(f'{key}:{data[key]}\n')
+                    
                 print(f"Saved data for {cellname}")
         except Exception as e:
             print(f'Error with {cellname}:\n {repr(e)}') 

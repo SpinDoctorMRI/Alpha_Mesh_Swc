@@ -4,8 +4,7 @@ from numpy.linalg import norm
 import pymeshlab as mlab
 from .tendril import Tendril
 import os
-import itertools
-from .mesh_processing import simplify_mesh, dcp_meshset, is_watertight
+from .mesh_processing import simplify_mesh, dcp_meshset
 import time
 import sys
 class Swc():
@@ -43,7 +42,7 @@ class Swc():
         start = time.time()
 
         # Read file and check for correct ordering
-        self.file = file
+        self.file = os.path.abspath(file)
         position_data , radius_data, conn_data , type_data,preamble = extract_swc(self.file)
         self.timings['extract_swc'] = time.time() - start
         start = time.time()
@@ -133,7 +132,7 @@ class Swc():
                 if len(n)>0:
                     nodes = np.hstack((nodes,n[0]))
                 # Create tubular mesh
-                tendril = Tendril(nodes,self,self.Delta)
+                tendril = Tendril(nodes,self,0)
                 v,f= tendril.make_mesh(v_S,f_S)
                 # Store mesh
                 m = mlab.Mesh(vertex_matrix = v,face_matrix =f)
@@ -148,9 +147,24 @@ class Swc():
         self.timings['merging_individual_meshes'] = time.time() - start
         return ms
 
+    def _simplify_mesh(self,ms_alpha,min_faces,dfaces,temp_dir_name):
+        '''Calls simplfication proceedure on ms_alpha. Simplfication parameters comes from Swc and min_faces,dfaces
+        '''
+        start = time.time()
+        if dfaces is None:
+            total_length = self.get_length()
+            dfaces = int(total_length*8)
+        if min_faces is None or int(min_faces)<dfaces/2:
+            min_faces = int(dfaces/2)
+        else:
+            min_faces = int(min_faces/2)
+        print(f'Simplifying {self.file} to at least {min_faces} faces')
+        r_min = max(min(self.radius_data),0.05)
+        ms = simplify_mesh(ms_alpha,dfaces,r_min,min_faces,temp_dir_name)
+        self.timings['simplify_mesh'] = time.time() - start
+        return ms
 
-
-    def make_mesh(self,simplify=False,alpha_fraction= None,output_dir=None,save=True,min_faces = None,dfaces=None,output_alpha_mesh=False):
+    def make_mesh(self,simplify=False,alpha_fraction= None,output_dir=None,save=True,min_faces = None,dfaces=None,save_alpha_mesh=False):
         '''Compute watertight surface mesh
         Args:
             self: swc object
@@ -163,9 +177,10 @@ class Swc():
         
         Returns:
             ms: (MeshSet) watertight surface mesh of the cell.
+            name: (String) namae of saved watertight mesh
+            ms_alpha: (MeshSet) watertight surface mesh of the cell from alpha wrapping stage.
         
         '''
-
         # Store output information
         if output_dir == None:
             name = self.file.replace('.swc','.ply')
@@ -186,24 +201,12 @@ class Swc():
         print(f'Applying alpha wrap to {self.file} with alpha = {alpha_fraction}')
         ms.generate_alpha_wrap(alpha_fraction = alpha_fraction,offset_fraction =alpha_fraction/30)
         self.timings['alpha_wrap'] = time.time() - start
-        if output_alpha_mesh:
-            ms_alpha = dcp_meshset(ms)
-        else:
-            ms_alpha = None
+        ms_alpha = dcp_meshset(ms)
+        if save_alpha_mesh:
+            ms.save_current_mesh(name.replace('.ply','_alpha.ply'),binary=False)
         # Begin simplification
         if simplify:
-            start = time.time()
-            if dfaces is None:
-                total_length = self.get_length()
-                dfaces = int(total_length*8)
-            if min_faces is None or int(min_faces)<dfaces/2:
-                min_faces = int(dfaces/2)
-            else:
-                min_faces = int(min_faces/2)
-            print(f'Simplifying {self.file} to at least {min_faces} faces')
-            r_min = max(min(self.radius_data),0.05)
-            ms = simplify_mesh(ms,dfaces,r_min,min_faces)
-            self.timings['simplify_mesh'] = time.time() - start
+            ms = self._simplify_mesh(ms,min_faces,dfaces,os.path.splitext(name)[0])
         # Save mesh
         if save:
             ms.save_current_mesh(name,binary=False)

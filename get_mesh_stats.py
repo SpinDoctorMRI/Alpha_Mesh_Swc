@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.sparse as sparse
 import pymeshlab as mlab
-from src.pytetgen import read_tetgen,call_tetgen
+from src import read_tetgen,call_tetgen
 import os
 from os.path import basename
 
@@ -30,7 +30,8 @@ def find_mesh_quality(tet_file):
     kappa =lambda A: frob_norm(np.matmul(A,Winv))*frob_norm(np.matmul(W,np.linalg.inv(A)))
     shape_measures = [3/kappa(A(e)) for e in elements]
     mesh_quality = np.mean(np.array(shape_measures) > 0.5)
-    return mesh_quality
+    mesh_size =len(nodes)
+    return mesh_quality,mesh_size
 
 
 def mesh_stats(swc,ms,ms_alpha,mesh_name):
@@ -41,24 +42,25 @@ def mesh_stats(swc,ms,ms_alpha,mesh_name):
     n_f =  ms.current_mesh().face_number()
     ms.clear()
     # Store mesh data from alpha mesh
+    # print(ms_alpha)
     alpha_surface_area,alpha_mesh_volume,_ = get_geom_stats(ms_alpha)
     alpha_n_v = ms_alpha.current_mesh().vertex_number()
     alpha_n_f =  ms_alpha.current_mesh().face_number()
 
      # Check volume mesh
-    print('Checking tetgen')
+    # print('Checking tetgen')
     timings = swc.timings
     # Time tetgen
-    tet_output = call_tetgen(mesh_name,'-pq1.2a1.0O9/7VCBF')
-    print(tet_output)
-    _,b = tet_output.split('Total running seconds: ')
-    tetgen_time = float(b.split('\n')[0])
-    timings['tetgen'] = tetgen_time
+    # tet_output = call_tetgen(mesh_name,'-pq1.2a1.0O9VCBF')
+    # print(tet_output)
+    # _,b = tet_output.split('Total running seconds: ')
+    # tetgen_time = float(b.split('\n')[0])
+    # timings['tetgen'] = tetgen_time
 
-    # Find mesh quality
-    print('Finding mesh quality')
-    tet_file = mesh_name.replace('.ply','.1')
-    mesh_quality = find_mesh_quality(tet_file)
+    # # Find mesh quality
+    # print('Finding mesh quality')
+    # tet_file = mesh_name.replace('.ply','.1')
+    # femesh_quality,femesh_size = find_mesh_quality(tet_file)
     mesh_stats = {
             'morphology' : basename(swc.file).replace('.swc',''),
             'vertex_number' : [n_v],
@@ -69,11 +71,12 @@ def mesh_stats(swc,ms,ms_alpha,mesh_name):
             'alpha_face_number' : [alpha_n_f],
             'alpha_surface_area' : [alpha_surface_area],
             'alpha_volume' : [alpha_mesh_volume],
-            'mesh_quality' : [mesh_quality],
+            # 'mesh_quality' : [femesh_quality],
+            # 'femesh_size' : [femesh_size],
             'cleaned_swc_nodes' : [len(swc.type_data)]
         }
     data = {**mesh_stats,**timings}
-    print(f'Removing tetgen files {tet_file}')
-    for ext in ['.node','.ele','.smesh']:
-        os.remove(tet_file+ext)
+    # print(f'Removing tetgen files {tet_file}')
+    # for ext in ['.node','.ele','.smesh']:
+    #     os.remove(tet_file+ext)
     return data

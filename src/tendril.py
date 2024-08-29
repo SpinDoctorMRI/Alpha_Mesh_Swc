@@ -97,15 +97,22 @@ class Tendril():
         for i in range(1,n):
             t[i] = t[i -1 ]+norm(self.p[i] - self.p[i-1])
         L = t[-1]
-        s = [0]
-        for i in range(1,n):
-            if t[i] - s[-1] >= self.Delta or i == n-1:
-                s.append(i)
-        s = np.array(s)
-        p = self.p[s]
-        t = t[s]/L
+        # s = [0]
+        # print(f'Delta = {self.Delta}')
+        # for i in range(1,n):
+        #     if t[i] - s[-1] >= self.Delta or i == n-1:
+        #         s.append(i)
+        #     else:
+        #         print('Rejecting node')
+        # s = np.array(s)
+        # p = self.p[s]
+        # t = t[s]/L
+        t = t/L
+        p = self.p
         self.skeleton = scipy.interpolate.CubicSpline(t, p,bc_type = 'natural',extrapolate=None)
-        self.radius = scipy.interpolate.CubicSpline(t, self.r[s],bc_type = 'natural',extrapolate=None)
+        # self.radius = scipy.interpolate.CubicSpline(t, self.r[s],bc_type = 'natural',extrapolate=None)
+        self.radius = scipy.interpolate.CubicSpline(t, self.r,bc_type = 'natural',extrapolate=None)
+
         self.L = L
         return self
     def make_mesh(self,v_S,f_S):

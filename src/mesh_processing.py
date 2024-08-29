@@ -3,6 +3,7 @@ import pymeshlab as mlab
 from trimesh import Trimesh
 import os
 from .pytetgen import call_tetgen
+from pathlib import Path
 
 def dcp_meshset(meshset):
     """Make a deepcopy of mlab.MeshSet."""
@@ -49,7 +50,7 @@ def mlab2tmesh(ms):
 
 
 
-def is_watertight(ms):
+def is_watertight(ms,name=None):
     """Check whether the mesh is watertight using trimesh routine and tetgen.
 
     Args:
@@ -65,9 +66,9 @@ def is_watertight(ms):
     #     return is_watertight_tetgen(ms)
     # else:
     #     return  True
-    return tmesh.is_watertight and is_watertight_tetgen(ms)
+    return tmesh.is_watertight and is_watertight_tetgen(ms,name)
 
-def is_watertight_tetgen(ms):
+def is_watertight_tetgen(ms,temp_dir_name):
     """Check whether the mesh is watertight using tetgen routine.
 
     Args:
@@ -75,16 +76,20 @@ def is_watertight_tetgen(ms):
     Returns:
         flag: (bool) flag for surface being watertight.
     """
-    
-    ms.save_current_mesh('test.ply',binary=False)
-    output =   call_tetgen('test.ply','-dBENF')
+    dir = os.path.join(os.getcwd(),temp_dir_name)
+    print(f'Making {dir}')
+    os.mkdir(dir)
+    ms.save_current_mesh(os.path.join(dir,'test.ply'),binary=False)
+    output =   call_tetgen(os.path.join(dir,'test.ply'),'-dBENF')
     # output = os.popen('tetgen -dBENF test.ply').read()
     # print(output)
-    print('Removing surface mesh file')
-    os.remove('test.ply')
+    print(f'Removing {dir}')
+    for file in os.listdir(dir):
+        os.remove(os.path.join(dir,file))
+    os.rmdir(dir)
     return 'No faces are intersecting.' in output
 
-def simplify_mesh_further(ms,targetfacenum,r_min):
+def simplify_mesh_further(ms,targetfacenum,r_min,temp_dir_name):
     """Apply remeshing to simplify mesh using quadric edge collapse
     
     Args:
@@ -104,11 +109,11 @@ def simplify_mesh_further(ms,targetfacenum,r_min):
         planarquadric=True,
         planarweight=0.002
         )
-    flag = is_watertight(ms)
+    flag = is_watertight(ms,temp_dir_name)
     
     return ms,flag
 
-def simplify_mesh(ms,dfaces,r_min,min_faces):
+def simplify_mesh(ms,dfaces,r_min,min_faces,temp_dir_name=None):
     '''Apply remeshing using quadric edge collapse and isotropic remeshing to reduce the number of vertices
     Given a initially very small target number of faces, we remesh the surface mesh to have that number of faces. 
     If it is watertight, this mesh is returned. Else, the target number of faces is increased by a fixed increment and the original mesh is remeshed to this target.
@@ -127,7 +132,7 @@ def simplify_mesh(ms,dfaces,r_min,min_faces):
     ms_alpha = dcp_meshset(ms)
 
 
-    print('Applying first simplification')
+    print('Applying isotropic remeshing')
     
     
     # Initial isotropic remeshing step.
@@ -155,7 +160,7 @@ def simplify_mesh(ms,dfaces,r_min,min_faces):
             break
         print(f'Applying simplification, attempt = {attempt}')
         
-        ms,flag = simplify_mesh_further(ms,(attempt-1)*dfaces + min_faces,r_min)
+        ms,flag = simplify_mesh_further(ms,(attempt-1)*dfaces + min_faces,r_min,temp_dir_name)
         new_number = ms.current_mesh().face_number()
         print(f'Old number of faces = {old_number} ,new number of faces = {new_number}, watertight = {flag}')
         attempt+= 1
@@ -173,7 +178,7 @@ def simplify_mesh(ms,dfaces,r_min,min_faces):
             if attempt*dfaces > 2*ms.current_mesh().face_number()/3:
                 break
             print(f'Applying simplification, attempt = {attempt}')
-            ms,flag = simplify_mesh_further(ms,(attempt-1)*dfaces + min_faces,r_min)
+            ms,flag = simplify_mesh_further(ms,(attempt-1)*dfaces + min_faces,r_min,temp_dir_name)
             new_number = ms.current_mesh().face_number()
             print(f'Old number of faces = {old_number} ,new number of faces = {new_number}, watertight = {flag}')
             attempt+= 1
