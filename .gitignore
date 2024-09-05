@@ -1,12 +1,3 @@
-
-alphaSwc/tendril.py
-alphaSwc/swc.py
-alphaSwc/mesh_processing.py
-alphaSwc/__init__.py
-alphaSwc/tendril.py
-alphaSwc/swc.py
-alphaSwc/mesh_processing.py
-alphaSwc/__init__.py
 input/04b_spindle3aFI.ply
 input/04b_spindle3aFI.png
 input/04b_spindle3aFI_accuracy.txt
@@ -60,9 +51,3 @@ test_batch_output/H17.03.013.11.08.04_692297214_m.ply
 test_batch_output/H17.06.013.12.03.01_681002938_m.ply
 test_batch_output/P1CS-31.CNG.ply
 test_batch_output/TTX_D_52CNG.ply
-test.1.node
-test.1.face
-scratch.ipynb
-neuron_meshing_paper/job.txt
-job.txt
-input/test_clean.swc
