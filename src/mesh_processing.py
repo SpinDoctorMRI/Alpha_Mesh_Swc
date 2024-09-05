@@ -3,7 +3,7 @@ import pymeshlab as mlab
 from trimesh import Trimesh
 import os
 from .pytetgen import call_tetgen
-from pathlib import Path
+import warnings
 
 def dcp_meshset(meshset):
     """Make a deepcopy of mlab.MeshSet."""
@@ -67,7 +67,17 @@ def is_watertight(ms,name=None):
     # else:
     #     return  True
     print('Checking self-intersections with TetGen')
-    return tmesh.is_watertight and is_watertight_tetgen(ms,name)
+    try:
+        no_self_intersections=is_watertight_tetgen(ms,name)
+    except ImportError as e:
+        print(repr(e))
+        warnings.warn('Appplying PymeshLab filter instead. Accuracy may be lower.')
+        ms.compute_selection_by_small_disconnected_components_per_face()
+        no_self_intersections= ms.current_mesh().selected_face_number() == 0
+        
+    flag = tmesh.is_watertight and no_self_intersections
+
+    return flag
 
 def is_watertight_tetgen(ms,temp_dir_name):
     """Check whether the mesh is watertight using tetgen routine.
@@ -82,12 +92,12 @@ def is_watertight_tetgen(ms,temp_dir_name):
     os.mkdir(dir)
     ms.save_current_mesh(os.path.join(dir,'test.ply'),binary=False)
     output =   call_tetgen(os.path.join(dir,'test.ply'),'-dBENF')
-    # output = os.popen('tetgen -dBENF test.ply').read()
-    # print(output)
     print(f'Removing {dir}')
     for file in os.listdir(dir):
         os.remove(os.path.join(dir,file))
     os.rmdir(dir)
+    if not('Delaunizing vertices...' in output):
+        raise ImportError(f'TetGen not working. Check file permissions and the paths are correct.')
     return 'No faces are intersecting.' in output
 
 def simplify_mesh_further(ms,targetfacenum,r_min,temp_dir_name):
