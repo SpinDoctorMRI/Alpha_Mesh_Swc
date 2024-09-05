@@ -28,8 +28,8 @@ if __name__ =='__main__':
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("file", help="Input SWC file.")
     parser.add_argument("--output_dir",help="Output directory for mesh")
-    parser.add_argument("--alpha",type=float,default=None,help="Alpha fraction for alpha wrapping")
-    parser.add_argument("--Delta",type=float,default=2.0,help= "Smoothing parameter for swc file.")
+    parser.add_argument("--alpha",type=float,default=None,help="Alpha fraction for alpha wrapping step")
+    parser.add_argument("--Delta",type=float,default=2.0,help= "Smoothing parameter for skeleton of swc file.")
 
     parser.add_argument("--simplify",type=int,help="Flag to simplify mesh",default=1)
     parser.add_argument("--min_faces",type=int,help="Minimum faces for the mesh",default=None)

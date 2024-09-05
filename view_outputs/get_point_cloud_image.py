@@ -32,6 +32,10 @@ def make_transparent(im):
 
 
 if __name__ =='__main__':
+    '''Create image of local mesh error. 
+    The point cloud and color bar should already have been created and saved in the same location as the mesh.
+    Needs as input the full path of the mesh file without the extension.'''
+
     cell_root=sys.argv[1]
     pc_name = cell_root +'_pc.ply'
     cbar_name = cell_root +'_cbar.png'

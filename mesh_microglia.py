@@ -9,8 +9,9 @@ if __name__ =='__main__':
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("name", help="Input name of cell.")
     parser.add_argument("--output_dir",help="Output directory for mesh",default='')
-    parser.add_argument("--alpha",help="Alpha fraction",type=float,default=0.0025)
+    parser.add_argument("--alpha",help=" Alpha fraction for alpha wrapping",type=float,default=0.0025)
     parser.add_argument("--simplify",type=int,help="Flag to simplify mesh",default=1)    
+    parser.add_argument("--Delta",type=float,default=1.0,help= "Smoothing parameter for skeleton of swc file.")
     
     parser.add_argument("--min_faces",help="Minimum faces for the mesh")
     parser.add_argument("--segment_meshes",help="Flag to mesh separate segments",default=0)
@@ -25,8 +26,7 @@ if __name__ =='__main__':
     # Create mesh for processes
     print(f'Loading {dendrite_file}')
     start = time.time()
-    swc = Swc(dendrite_file,process=True,Delta=1.0,delta=0.1)
-    
+    swc = Swc(dendrite_file,process=True,Delta=args.Delta,delta=args.Delta/2)
     # Store simplification parameters if needed
     if args.simplify == 1:
         r_min = min(swc.radius_data)
