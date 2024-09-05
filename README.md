@@ -21,7 +21,7 @@ For some optional visualisation scripts in view_outputs  we use open3d. This is 
 ### Basic example
 An individual mesh may be meshed with 
 ```
-    python mesh_swc.py file=path/to/file.swc 
+    python mesh_swc.py file=path/to/swc_file 
  ```
 
 Optional parameters include:
@@ -65,7 +65,7 @@ An individual mesh accuracy is computed through
 ```
 And saved to the output file. If an additional parameter is added to the command line then the point cloud along with the distances is saved with the mesh_file. Alongside the point cloud a color bar is saved as an image, to see the correspondance between hue and local mesh error. The point cloud can be visualised using open3d and 
 ```
-    python view_outputs/view_point_cloud.py path/to/point_cloud
+    python view_outputs/view_point_cloud.py path/to/point_cloud_file
 ```
 Multiple meshes can be assessed with 
 ```
@@ -80,13 +80,13 @@ To mesh cells which consist of a separate swc file for the skelton and a surface
 
 Fix swc files:
 ```
-    python fix_swc.py path/to/file.swc
+    python fix_swc.py path/to/swc_file
 ```
 
 This creates a clean swc file called file_clean.swc in the original swc location. Rename this file to file.swc and move it to a directory with the soma surface mesh stored as file.wrl (other surface mesh formats acceptable). To mesh the cell launch
 
 ```
-    python mesh_microglia.py name=path/to/file
+    python mesh_microglia.py name=path/to/cellname
 ```
 where file does not include the .swc or soma extension. Optional parameters include:
     --output_dir = Output directory for mesh
@@ -102,26 +102,27 @@ Currently computing the mesh accuracy for mixed cell descriptions is not support
 ## Visualisation
 On windows the surface meshes may be viewed with 3D viewer, available freely on the Microsoft store. For visualisation of surface meshes with this program run
 ```
-    python view_outputs/view_ply.py path/to/mesh.ply
+    python view_outputs/view_ply.py path/to/mesh
 ```
 Alternatively if open3d is installed as a package on python, you can use:
 ```
-    python view_outputs/add_color.py path/to/mesh.ply
-    python view_outputs/view_surface_mesh.py path/to/mesh.ply
+    python view_outputs/add_color.py path/to/mesh
+    python view_outputs/view_surface_mesh.py path/to/mesh
 ```
 The swc file can be viewed directly by running:
 ```
-    python view_outputs/view_swc.py path/to/file.swc
+    python view_outputs/view_swc.py path/to/swc_file
 ```
 If the point cloud was saved when running mesh_accuracy it can be viewed by using:
 ```
-    python view_outputs/view_point_cloud.py path/to/point_cloud.ply
+    python view_outputs/view_point_cloud.py path/to/point_cloud
 ```
 The point cloud can be plotted alongside the mesh using 
 ```
-    python view_outputs/add_color.py path/to/mesh.ply
-    python view_outputs/view_error.py path/to/mesh
+    python view_outputs/add_color.py path/to/mesh
+    python view_outputs/view_error.py path/to/cellname
 ```
+where cellname is the name of the mesh file without any extension.
 ----
 ## Misc
 check_femesh.py and check_femeshes.py are used to test the quality of finite element meshes but do not store them for storage purposes. To create finite element meshes use the surface mesh as an input to TetGen or other meshing software.
