@@ -1,7 +1,0 @@
-$list = Get-Content .\Amoeboid_list.txt -Raw;
-$list=$list -Split "\n";
-foreach ($cell in $list){echo $cell; python alphaSwc/southampton.py $cell --output_dir='../alphaSwc_data/MicrogliaConverted_Alex/Amoeboid_surface' --min_faces=2000};
-
-$list = Get-Content .\Ramified_list.txt -Raw;
-$list=$list -Split "\n";
-foreach ($cell in $list){echo $cell; python alphaSwc/southampton.py $cell --output_dir='../alphaSwc_data/MicrogliaConverted_Alex/Ramified_surface' --min_faces=2000};

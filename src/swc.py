@@ -7,6 +7,10 @@ import os
 from .mesh_processing import simplify_mesh, dcp_meshset
 import time
 import sys
+from .segments import  Sphere, Frustum
+from multiprocessing import Pool
+from copy import deepcopy as dcp
+
 class Swc():
     '''Class to store and process nodes from swc data. This class stores the skeleton information we get from the swc files
     attributes:
@@ -147,7 +151,7 @@ class Swc():
         self.timings['merging_individual_meshes'] = time.time() - start
         return ms
 
-    def _simplify_mesh(self,ms_alpha,min_faces,dfaces,temp_dir_name):
+    def _simplify_mesh(self,ms_alpha,min_faces,dfaces,temp_dir_name,min_r_min=0.05):
         '''Calls simplfication proceedure on ms_alpha. Simplfication parameters comes from Swc and min_faces,dfaces
         '''
         start = time.time()
@@ -159,7 +163,7 @@ class Swc():
         else:
             min_faces = int(min_faces/2)
         print(f'Simplifying {self.file} to at least {min_faces} faces')
-        r_min = max(min(self.radius_data),0.05)
+        r_min = max(min(self.radius_data),min_r_min)
         ms = simplify_mesh(ms_alpha,dfaces,r_min,min_faces,temp_dir_name)
         self.timings['simplify_mesh'] = time.time() - start
         return ms
@@ -218,6 +222,164 @@ class Swc():
         total_length = sum(edges)
         return total_length
 
+    def make_point_cloud(self,density=1.0):
+        '''Creates a uniform surface point cloud over the swc file'''
+        print('Creating point cloud')
+        segments = []
+        N = len(self.type_data)
+        for i in range(0,N):
+            t = self.type_data[i]
+            if t == 1 or self.conn_data[i,1] == -1:
+                node = {}
+                node['type'] = t
+                node['position'] = self.position_data[i]
+                node['radius'] = self.radius_data[i]
+                segments.append(Sphere(node,density))
+            else:
+                end = {}
+                end['type'] = t
+                end['position'] = self.position_data[i]
+                end['radius'] = self.radius_data[i]
+                j = self.conn_data[i,1]
+                start = {}
+                start['type'] = self.type_data[j]
+                start['position'] = self.position_data[j]
+                start['radius'] = self.radius_data[j]
+                segments.append(Frustum(start,end,density))
+        self._check_all_intersect(segments)
+        point_list = []
+        normal_list = []
+        color_list = []
+        r_min = np.inf
+
+        # construct point cloud
+        for iseg in segments:
+            p, n, c = iseg.output()
+            point_list.append(p)
+            normal_list.append(n)
+            color_list.append(c)
+            if isinstance(iseg, Frustum):
+                r_min = min(r_min, iseg.r_min)
+            elif isinstance(iseg, Sphere):
+                r_min = min(r_min, iseg.r)
+        points = np.concatenate(point_list, axis=1)
+        normals = np.concatenate(normal_list, axis=1)
+        colors = np.concatenate(color_list, axis=1)
+
+        m = mlab.Mesh(
+                    vertex_matrix=points.T,
+                    v_normals_matrix=normals.T,
+                    v_color_matrix=colors.T
+                )
+        ms = mlab.MeshSet()
+        ms.add_mesh(m)
+        ms.meshing_remove_duplicate_vertices()
+        bbox = ms.get_geometric_measures()['bbox']
+        if r_min < 1:
+            ms.meshing_merge_close_vertices(
+                threshold=mlab.PercentageValue(10*r_min/bbox.diagonal())
+            )
+        ms.apply_normal_normalization_per_vertex()
+        ms.apply_normal_point_cloud_smoothing(k=5)
+        print(f'Size of point cloud = {ms.current_mesh().vertex_number()}')
+        return ms
+    
+    def _check_all_intersect(self, seg):
+        """Remove collision points."""
+
+        collision_index_pairs = self.aabb(seg)
+        for i, j in collision_index_pairs:
+            # if len(seg[i]) * len(seg[j]) != 0:
+                self._parent_child_intersect(
+                    seg, i, j, remove_close_points=True)
+
+        return seg
+    
+    @staticmethod
+    def _parent_child_intersect(seg, p, c, remove_close_points=False) -> None:
+        """Remove collision points in the parent and child nodes.
+
+        Args:
+            seg (list): list of segments.
+            p (int): parent index in `seg`.
+            c (int): child index in `seg`.
+            remove_close_points (bool, optional): If this is set to True,
+            remove all the points that are nearer than the specified threshold.
+            Defaults to False.
+        """
+
+        # update parent
+        [_, p_on, p_outer, p_out_near] = seg[c].intersect(seg[p])
+        seg[p].update(np.logical_or(p_on, p_outer))
+
+        # update child
+        [_, _, c_outer, c_out_near] = seg[p].intersect(seg[c])
+        seg[c].update(c_outer)
+
+        if remove_close_points:
+            # get minimum radius
+            if isinstance(seg[p], Frustum) and isinstance(seg[c],Frustum):
+                r_min = min(seg[p].r_min, seg[c].r_min)
+            elif not(isinstance(seg[p], Frustum)) and not(isinstance(seg[c],Frustum)):
+                r_min = min(seg[p].r, seg[c].r)
+            else:
+                r_min = seg[c].r_min
+
+            # get points and normals
+            p_points, p_normals, _ = seg[p].output(p_out_near)
+            c_points, c_normals, _ = seg[c].output(c_out_near)
+
+            # compute distance between two point clouds
+            p_points = p_points.T.reshape((-1, 1, 3))
+            c_points = c_points.T.reshape((1, -1, 3))
+            dist = np.linalg.norm(p_points - c_points, axis=2)
+
+            # compute angle between normals
+            angle = p_normals.T @ c_normals
+
+            # remove close points
+            mask_far = (dist >= 0.1*r_min) | (angle >= 0)
+            mask_far = mask_far & (dist >= 0.02*r_min)
+            if not mask_far.all():
+                p_mask = np.all(mask_far, axis=1)
+                c_mask = np.all(mask_far, axis=0)
+
+                # remove parent's points
+                p_keep = dcp(seg[p].keep)
+                p_keep[p_keep & p_out_near] = p_mask
+                seg[p].update(p_keep)
+
+                # remove child's points
+                c_keep = dcp(seg[c].keep)
+                c_keep[c_keep & c_out_near] = c_mask
+                seg[c].update(c_keep)
+
+        return None
+
+    @staticmethod
+    def aabb(seg):
+        """Get the aabb collision index pairs."""
+
+        # get all indices
+        indices = [(i, j) for i in range(len(seg) - 1)
+                   for j in range(i+1, len(seg))]
+
+        # get axis-aligned bounding box
+        aabbs = [iseg.aabb for iseg in seg]
+        aabb_pairs = [(aabbs[i], aabbs[j]) for i, j in indices]
+
+        # detect aabb collision
+        with Pool() as p:
+            flags = p.map(_aabb_collision, aabb_pairs)
+        collision_index_pairs = []
+
+        # assemble the collision index pairs
+        for ind, flag in enumerate(flags):
+            if flag:
+                collision_index_pairs.append(indices[ind])
+
+        return collision_index_pairs
+
 def get_bbox_diag(p):
     '''Returns diagonal of a bounding box for point cloud p
     Args:
@@ -232,6 +394,8 @@ def get_bbox_diag(p):
     max_y = max(p[:,1])
     max_z = max(p[:,2])
     diag = np.sqrt( (max_x - min_x)**2 + (max_y -min_y)**2 + (max_z -min_z)**2 )
+    if diag ==0 :
+        raise ValueError('Only one point in point cloud')
     return diag
     
 
@@ -260,6 +424,7 @@ def extract_swc(file):
     with open(file, 'r') as f:
         first_node = True
         found_scale = False
+        reset_radii = []
         for iline in f:
             line = iline.strip().lower().split()
 
@@ -303,13 +468,15 @@ def extract_swc(file):
                     msg = f"Node id {line[0]}: negative compartment ID."
                     raise ValueError(msg)
 
-                if radius < 0:
+                
+                if radius < 1e-4:
+                    msg = f"Node id {line[0]}: radius to small, reset the scale of swc file. Setting to parent radius"
+                    warnings.warn(msg,Warning)
+                    reset_radii.append(id)
+                elif radius < 0:
                     msg = f"Node id {line[0]}: negative radius."
                     radius = -radius
                     warnings.warn(msg,Warning)
-                if radius ==0:
-                    msg = f"Node id {line[0]}: radius 0."
-                    ValueError(msg)
                 # if radius < 0.1:
                 #     radius = 0.1
 
@@ -317,7 +484,7 @@ def extract_swc(file):
                     msg = " ".join((
                         f"Node id {line[0]}:",
                         "unknown compartment type."))
-                    warnings.warn(msg)
+                    warnings.warn(msg,Warning)
 
                 # record info
                 position_data.append(position)
@@ -326,6 +493,14 @@ def extract_swc(file):
                 conn_data.append(np.array([id, parent_id]))
             else:
                 preamble.append(iline)
+
+    for id in reset_radii:
+        if conn_data[id][1] != -1:
+            radius_data[id] = radius_data[conn_data[id][1]]
+        else:
+            msg = f'File is corrupt at node {id+1}'
+            raise ValueError(msg)
+
 
     position_data= np.array(position_data)
     type_data= np.array(type_data)
@@ -660,3 +835,19 @@ def reorder(start_node,set,nodes,parents,permutation):
         permutation[set] = children[i]
         permutation,set = reorder(children[i],set,nodes,parents,permutation)
     return permutation,set
+
+def _aabb_collision(aabb_pair):
+    """Detect "Axis-Aligned Bounding Box" collision."""
+
+    xa, ya, za = aabb_pair[0]
+    xb, yb, zb = aabb_pair[1]
+
+    # no collision
+    if xa['max'] <= xb['min'] or xa['min'] >= xb['max'] \
+            or ya['max'] <= yb['min'] or ya['min'] >= yb['max'] \
+            or za['max'] <= zb['min'] or za['min'] >= zb['max']:
+        return False
+
+    # found collision
+    else:
+        return True

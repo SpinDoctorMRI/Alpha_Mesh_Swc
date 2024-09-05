@@ -12,8 +12,7 @@ setup(  name='alphaSwc',
         'numpy',
         'scipy',
         'trimesh',
-        'pymeshlab>=2023.12.post1',
-        
+        'pymeshlab>=2023.12.post1', 
         ],
         include_package_data=True,
 

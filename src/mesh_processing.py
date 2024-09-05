@@ -66,6 +66,7 @@ def is_watertight(ms,name=None):
     #     return is_watertight_tetgen(ms)
     # else:
     #     return  True
+    print('Checking self-intersections with TetGen')
     return tmesh.is_watertight and is_watertight_tetgen(ms,name)
 
 def is_watertight_tetgen(ms,temp_dir_name):
@@ -113,7 +114,7 @@ def simplify_mesh_further(ms,targetfacenum,r_min,temp_dir_name):
     
     return ms,flag
 
-def simplify_mesh(ms,dfaces,r_min,min_faces,temp_dir_name=None):
+def simplify_mesh(ms,dfaces=1000,r_min=0.1,min_faces=2000,temp_dir_name=None):
     '''Apply remeshing using quadric edge collapse and isotropic remeshing to reduce the number of vertices
     Given a initially very small target number of faces, we remesh the surface mesh to have that number of faces. 
     If it is watertight, this mesh is returned. Else, the target number of faces is increased by a fixed increment and the original mesh is remeshed to this target.

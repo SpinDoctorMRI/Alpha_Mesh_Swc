@@ -35,7 +35,7 @@ def find_mesh_quality(tet_file):
 
 
 def mesh_stats(swc,ms,ms_alpha,mesh_name):
-    '''Function to compute relevent summary data to be stored as a dictionary'''
+    '''Function to compute relevent summary data to be stored as a dictionary and saved in output log file.'''
     # Store mesh data from final mesh
     surface_area,mesh_volume,_ = get_geom_stats(ms)
     n_v = ms.current_mesh().vertex_number()
