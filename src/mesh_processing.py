@@ -142,7 +142,9 @@ def simplify_mesh(ms,dfaces=1000,r_min=0.1,min_faces=2000,temp_dir_name=None):
     # Save the original mesh
     ms_alpha = dcp_meshset(ms)
 
-
+    if temp_dir_name == None:
+        warnings.warn("Making temp directory in current directory")
+        temp_dir_name = os.path.join(os.getcwd(),'temp')
     print('Applying isotropic remeshing')
     
     

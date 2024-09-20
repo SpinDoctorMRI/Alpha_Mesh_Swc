@@ -94,7 +94,7 @@ where file does not include the .swc or soma extension. Optional parameters incl
     --Delta = Smoothing parameter for skeleton of swc file.
     --simplify = Flag to simplify mesh
     --min_faces = Minimum faces for the mesh
-    --segment_meshes = Flag to produce seprate dendrite, and soma meshes.
+    --segment_meshes = Flag to produce separate dendrite, and soma meshes.
     --soma_ext = File extension for soma mesh. Defaults to .wrl
 
 Currently computing the mesh accuracy for mixed cell descriptions is not supported.

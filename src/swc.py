@@ -7,7 +7,7 @@ import os
 from .mesh_processing import simplify_mesh, dcp_meshset
 import time
 import sys
-from .segments import  Sphere, Frustum
+from .segments import  Sphere, Frustum, Segment
 from multiprocessing import Pool
 from copy import deepcopy as dcp
 
@@ -251,7 +251,6 @@ class Swc():
         normal_list = []
         color_list = []
         r_min = np.inf
-
         # construct point cloud
         for iseg in segments:
             p, n, c = iseg.output()
@@ -282,6 +281,8 @@ class Swc():
         ms.apply_normal_normalization_per_vertex()
         ms.apply_normal_point_cloud_smoothing(k=5)
         print(f'Size of point cloud = {ms.current_mesh().vertex_number()}')
+        self.seg = segments
+        self.pc = ms
         return ms
     
     def _check_all_intersect(self, seg):
@@ -295,6 +296,57 @@ class Swc():
 
         return seg
     
+    def add_mesh_to_point_cloud(self,ms):
+        """Adds a mesh to existing surface point cloud over swc. Returns point cloud covering surface of union of the point cloud and surface"""
+        seg =self.seg
+        points = ms.current_mesh().vertex_matrix().T
+        keep = np.full(points.shape[1], True) 
+        soma = Segment()
+        soma.points = points
+        ms.compute_normal_per_vertex()
+        soma.normals= ms.current_mesh().vertex_normal_matrix().T
+        soma.keep = keep
+        soma.r = np.inf
+        x = {'min': np.min(points[0, :]), 'max': np.max(points[0, :])}
+        y = {'min': np.min(points[1, :]), 'max': np.max(points[1, :])}
+        z = {'min': np.min(points[2, :]), 'max': np.max(points[2, :])}
+        soma_aabb = x,y,z
+        j = len(seg) -1
+        for i,iseg in enumerate(seg):
+            aabb_pair = soma_aabb, iseg.aabb
+            if _aabb_collision(aabb_pair):
+                inner, on, outer, out_near = iseg.intersect(soma)
+                soma.update(outer)
+        pc = self.pc
+        ms.add_mesh(pc.current_mesh())    
+        ms.compute_scalar_by_distance_from_another_mesh_per_vertex(measuremesh=1,refmesh=0,signeddist=True)
+        ms.set_current_mesh(1)
+        d = ms.current_mesh().vertex_scalar_array()
+        keep  = d > 0
+
+        points= pc.current_mesh().vertex_matrix().T
+        p,_,_ = soma.output()
+        points  = [points[:,keep],p]
+        points = np.concatenate(points,axis=1)
+        ms.clear()
+        m = mlab.Mesh(
+                            vertex_matrix=points.T,
+        )
+        ms = mlab.MeshSet()
+        ms.add_mesh(m)
+        ms.meshing_remove_duplicate_vertices()
+        bbox = ms.get_geometric_measures()['bbox']
+        r_min= min(self.radius_data)
+        if r_min < 1:
+            ms.meshing_merge_close_vertices(
+                threshold=mlab.PercentageValue(10*r_min/bbox.diagonal())
+            )
+        ms.apply_normal_normalization_per_vertex()
+        ms.apply_normal_point_cloud_smoothing(k=5)
+        return ms
+
+
+
     @staticmethod
     def _parent_child_intersect(seg, p, c, remove_close_points=False) -> None:
         """Remove collision points in the parent and child nodes.
@@ -318,12 +370,13 @@ class Swc():
 
         if remove_close_points:
             # get minimum radius
-            if isinstance(seg[p], Frustum) and isinstance(seg[c],Frustum):
-                r_min = min(seg[p].r_min, seg[c].r_min)
-            elif not(isinstance(seg[p], Frustum)) and not(isinstance(seg[c],Frustum)):
-                r_min = min(seg[p].r, seg[c].r)
-            else:
-                r_min = seg[c].r_min
+            r_mins=[]
+            for i in [p,c]:
+                if hasattr(seg[i],'r_min'):
+                    r_mins.append(seg[i].r_min)
+                else:
+                    r_mins.append(seg[i].r)
+            r_min = min(r_mins)
 
             # get points and normals
             p_points, p_normals, _ = seg[p].output(p_out_near)
@@ -666,6 +719,13 @@ def smooth_swc(position_data,radius_data,conn_data,type_data,Delta):
                 N = N + num_points
                 for j in range(0,num_points):
                     num_children.insert(i+j,1)
+
+            elif norm(p-q) < 1e-5:
+                # Nodes are too close, must merge nodes.
+                position_data,radius_data,conn_data,type_data = node_merge_with_parent(i,position_data,radius_data,conn_data,type_data)
+                N = N -1
+                num_children.pop(i)
+                
             else:
                 i +=1
         else:

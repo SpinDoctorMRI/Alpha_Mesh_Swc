@@ -1,4 +1,4 @@
-from alphaSwc.src import Swc
+from src import Swc
 import numpy as np
 import sys
 import pymeshlab as mlab
@@ -14,6 +14,7 @@ if __name__=='__main__':
     in the cleaned swc file.
     '''
     file = sys.argv[1]
+    output_dir = sys.argv[2]
     swc = Swc(file,process=False)
     types = swc.type_data
     # ms,_,_ = swc.make_mesh(alpha_fraction=0.001)
@@ -36,7 +37,8 @@ if __name__=='__main__':
         c1[c1[:,1] == 0,1] = 0
         c1[0,1] = -1
 
-        file = file.replace('.swc','_fixed.swc')
+        file =os.path.basename(file)
+        file = os.path.join(output_dir,file)
         data = []
         N = len(p1)
         conn_data= np.copy(c1)
@@ -52,6 +54,9 @@ if __name__=='__main__':
         print(os.path.abspath(file))
 
     else:
-        swc.write()
-        print(os.path.abspath(file.replace('.swc','_clean.swc')))
+        
+        file =os.path.basename(file)
+        file = os.path.join(output_dir,file)
+        swc.file= file
+        swc.write(append_clean=False)
     
