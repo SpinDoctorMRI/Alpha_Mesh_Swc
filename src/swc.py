@@ -247,6 +247,7 @@ class Swc():
                 start['radius'] = self.radius_data[j]
                 segments.append(Frustum(start,end,density))
         self._check_all_intersect(segments)
+        # print(segments)
         point_list = []
         normal_list = []
         color_list = []
@@ -264,7 +265,6 @@ class Swc():
         points = np.concatenate(point_list, axis=1)
         normals = np.concatenate(normal_list, axis=1)
         colors = np.concatenate(color_list, axis=1)
-
         m = mlab.Mesh(
                     vertex_matrix=points.T,
                     v_normals_matrix=normals.T,
@@ -274,12 +274,12 @@ class Swc():
         ms.add_mesh(m)
         ms.meshing_remove_duplicate_vertices()
         bbox = ms.get_geometric_measures()['bbox']
-        if r_min < 1:
-            ms.meshing_merge_close_vertices(
-                threshold=mlab.PercentageValue(10*r_min/bbox.diagonal())
-            )
-        ms.apply_normal_normalization_per_vertex()
-        ms.apply_normal_point_cloud_smoothing(k=5)
+        # if r_min < 1:
+        #     ms.meshing_merge_close_vertices(
+        #         threshold=mlab.PercentageValue(10*r_min/bbox.diagonal())
+        #     )
+        # ms.apply_normal_normalization_per_vertex()
+        # ms.apply_normal_point_cloud_smoothing(k=5)
         print(f'Size of point cloud = {ms.current_mesh().vertex_number()}')
         self.seg = segments
         self.pc = ms
@@ -292,11 +292,11 @@ class Swc():
         for i, j in collision_index_pairs:
             # if len(seg[i]) * len(seg[j]) != 0:
                 self._parent_child_intersect(
-                    seg, i, j, remove_close_points=True)
+                    seg, i, j, remove_close_points=False)
 
         return seg
     
-    def add_mesh_to_point_cloud(self,ms):
+    def add_mesh_to_point_cloud(self,ms,includemesh=True):
         """Adds a mesh to existing surface point cloud over swc. Returns point cloud covering surface of union of the point cloud and surface"""
         seg =self.seg
         points = ms.current_mesh().vertex_matrix().T
@@ -321,28 +321,37 @@ class Swc():
         ms.add_mesh(pc.current_mesh())    
         ms.compute_scalar_by_distance_from_another_mesh_per_vertex(measuremesh=1,refmesh=0,signeddist=True)
         ms.set_current_mesh(1)
-        d = ms.current_mesh().vertex_scalar_array()
-        keep  = d > 0
+        ms.compute_color_from_scalar_per_vertex(colormap='Viridis')
 
-        points= pc.current_mesh().vertex_matrix().T
-        p,_,_ = soma.output()
-        points  = [points[:,keep],p]
-        points = np.concatenate(points,axis=1)
+        ms.save_current_mesh('test.ply',binary=False)
+
+        d = ms.current_mesh().vertex_scalar_array()
+        points= ms.current_mesh().vertex_matrix().T
+
+        keep  = d > 0
+        for i,flag in enumerate(keep):
+            if ~flag:
+                keep[i] = ~_in_aabb(soma_aabb,points[:,i])
+        points=points[:,keep]
+
+        if includemesh:
+            p,_,_ = soma.output()
+            points  = [points,p]
+            points = np.concatenate(points,axis=1)
         ms.clear()
+
         m = mlab.Mesh(
                             vertex_matrix=points.T,
         )
         ms = mlab.MeshSet()
         ms.add_mesh(m)
         ms.meshing_remove_duplicate_vertices()
-        bbox = ms.get_geometric_measures()['bbox']
-        r_min= min(self.radius_data)
-        if r_min < 1:
-            ms.meshing_merge_close_vertices(
-                threshold=mlab.PercentageValue(10*r_min/bbox.diagonal())
-            )
-        ms.apply_normal_normalization_per_vertex()
-        ms.apply_normal_point_cloud_smoothing(k=5)
+        # bbox = ms.get_geometric_measures()['bbox']
+        # r_min= min(self.radius_data)
+        # if r_min < 1:
+        #     ms.meshing_merge_close_vertices(
+        #         threshold=mlab.PercentageValue(10*r_min/bbox.diagonal())
+        #     )
         return ms
 
 
@@ -895,6 +904,15 @@ def reorder(start_node,set,nodes,parents,permutation):
         permutation[set] = children[i]
         permutation,set = reorder(children[i],set,nodes,parents,permutation)
     return permutation,set
+
+def _in_aabb(aabb,p):
+    """Detect if point p is in Axis-aligne Bouding Box aabb"""
+    xa, ya, za = aabb
+    x = p[0]
+    y = p[1]
+    z = p[2]
+
+    return xa['min'] <= x and x<= xa['max'] and  ya['min'] <= y and y<= ya['max'] and  za['min'] <= z and z<= za['max']
 
 def _aabb_collision(aabb_pair):
     """Detect "Axis-Aligned Bounding Box" collision."""

@@ -8,6 +8,7 @@ if __name__ =='__main__':
     description = """Reads swc file and separate soma file and produces a coarse watertight surface mesh"""
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("name", help="Input name of cell.")
+    parser.add_argument("--log",type=str,default=None)
     parser.add_argument("--output_dir",help="Output directory for mesh",default='')
     parser.add_argument("--alpha",help=" Alpha fraction for alpha wrapping",type=float,default=0.0025)
     parser.add_argument("--simplify",type=int,help="Flag to simplify mesh",default=1)    
@@ -22,7 +23,7 @@ if __name__ =='__main__':
     cellname = os.path.basename(dendrite_file)
     output = os.path.join(args.output_dir,cellname.replace('.swc','.ply'))
     min_faces = args.min_faces
-    
+    log =args.log 
     # Create mesh for processes
     print(f'Loading {dendrite_file}')
     start = time.time()
@@ -31,12 +32,11 @@ if __name__ =='__main__':
     if args.simplify == 1:
         r_min = min(swc.radius_data)
         total_length = swc.get_length()
-        dfaces = int(total_length*4)
+        dfaces = int(total_length*8)
         if min_faces is None:
             min_faces = dfaces
         else:
             min_faces = int(min_faces)
-
 
     # Manually set alpha_fraction
     alpha_fraction = args.alpha
@@ -51,33 +51,51 @@ if __name__ =='__main__':
         ms.generate_by_merging_visible_meshes()
         ms.generate_alpha_wrap(alpha_fraction=alpha_fraction,offset_fraction=alpha_fraction/30)
         if args.simplify == 1:
-            ms = simplify_mesh(ms,dfaces,r_min,min_faces,temp_dir_name=temp_dir_name)
+            ms = simplify_mesh(ms,dfaces,r_min/2,min_faces,temp_dir_name=temp_dir_name)
         ms.save_current_mesh(output,binary=False)
         print(f'Saved to {output}')
+        if log is not None:
+            with open(output.replace('.ply','.txt'),'w') as f:
+                f.write(f'{time.time()-start:.2f}')
     else:
         # Get separete dendrite and soma meshes
+        start_meshing = time.time()
         ms_dendrites,_,_ = swc.make_mesh(simplify=False,alpha_fraction= alpha_fraction,save=False)
         ms_dendrites.generate_splitting_by_connected_components(delete_source_mesh=True)
+        meshing_time = time.time() - start_meshing
         for i in range(0,ms_dendrites.mesh_number()-1):
             ms_d = mlab.MeshSet()
             m = ms_dendrites.current_mesh()
             ms_d.add_mesh(m)
             if args.simplify == 1:
+                start_simplify = time.time()
                 ms_d = simplify_mesh(ms_d,dfaces/3,r_min,min_faces/3,temp_dir_name=temp_dir_name)
             ms_d.save_current_mesh(output.replace('.ply',f'_process_{i+1}.ply'),binary=False)
             ms_dendrites.delete_current_mesh()
             print('Saved to '+output.replace('.ply',f'_process_{i+1}.ply'))
-
+            if log is not None:
+                with open(output.replace('.ply',f'_process_{i+1}.txt'),'w') as f:
+                    f.write(f'Meshing time : {meshing_time}')
+                    if args.simplify == 1:
+                        f.write(f'Simplifying time : {time.time()-start_simplify:.2f}')
         # Load soma mesh
         ms_soma = mlab.MeshSet()
         ms_soma.load_new_mesh(''.join([args.name.replace('\r',''),args.soma_ext])) # or wrl
         # Apply alpha wrap
+        start_meshing = time.time()
         ms_soma.generate_alpha_wrap(alpha_fraction=alpha_fraction,offset_fraction=alpha_fraction/30)
+        meshing_time = time.time() - start_meshing
         # Simplify mesh
         if args.simplify == 1:
+            start_simplify = time.time()
             ms_soma = simplify_mesh(ms_soma,dfaces/3,r_min,min_faces/3,temp_dir_name=temp_dir_name)
 
         ms_soma.save_current_mesh(output.replace('.ply','_soma.ply'),binary=False)
+        if log is not None:
+                with open(output.replace('.ply','_soma.txt'),'w') as f:
+                    f.write(f'Meshing time : {meshing_time}')
+                    if args.simplify == 1:
+                        f.write(f'Simplifying time : {time.time()-start_simplify:.2f}')
         print(f'Saved to' + output.replace('.ply','_soma.ply'))
 
     print(f'Total Elapsed time = {time.time()-start:.2f}')

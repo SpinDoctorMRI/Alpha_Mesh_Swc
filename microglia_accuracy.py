@@ -6,44 +6,6 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import time
 
-# def get_raw_point_cloud(file):
-#     swc = Swc2mesh(file,soma_shape='multi-sphere',to_origin=False)
-#     swc.density=1.0
-#     segments,_= swc._create_segments('cell')
-#     point_list = []
-#     normal_list = []
-#     color_list = []
-#     r_min = np.inf
-
-#     # construct point cloud
-#     for iseg in segments[0]:
-#         p, n, c = iseg.output()
-#         point_list.append(p)
-#         normal_list.append(n)
-#         color_list.append(c)
-#         if isinstance(iseg, Frustum):
-#             r_min = min(r_min, iseg.r_min)
-#         elif isinstance(iseg, Sphere):
-#             r_min = min(r_min, iseg.r)
-#     points = np.concatenate(point_list, axis=1)
-#     normals = np.concatenate(normal_list, axis=1)
-#     colors = np.concatenate(color_list, axis=1)
-
-#     m = mlab.Mesh(
-#                 vertex_matrix=points.T,
-#                 v_normals_matrix=normals.T,
-#                 v_color_matrix=colors.T
-#             )
-#     return m,r_min
-# def clean_point_cloud(ms,r_min):
-#     ms.meshing_remove_duplicate_vertices()
-#     bbox = ms.get_geometric_measures()['bbox']
-#     if r_min < 1:
-#         ms.meshing_merge_close_vertices(
-#             threshold=mlab.PercentageValue(10*r_min/bbox.diagonal())
-#         )
-#     ms.apply_normal_normalization_per_vertex()
-#     ms.apply_normal_point_cloud_smoothing(k=5)
 
 def main(mesh,source,output,save_pc=False):
     start=time.time()
@@ -54,21 +16,18 @@ def main(mesh,source,output,save_pc=False):
     # m,r_min=get_raw_point_cloud(source)
     # ms.add_mesh(m)
     # clean_point_cloud(ms,r_min) 
-    swc = Swc(source,process=False)
-    swc.make_point_cloud()
+    swc = Swc(source,process=True,Delta=0.1,delta=0.05)
     ms_soma = mlab.MeshSet()
     ms_soma.load_new_mesh(source.replace('.swc','.wrl'))
     l = 2*np.sqrt(2)/ms_soma.get_geometric_measures()['surface_area']
     bbox = ms_soma.get_geometric_measures()['bbox']
-    print(f'New l = {l}')
-    # ms_soma.meshing_isotropic_explicit_remeshing(
-    #             iterations = 7,
-    #             adaptive = True,
-    #             targetlen = mlab.PercentageValue(100*l/bbox.diagonal()),
-    #             checksurfdist = False
-    #         )
-    print('Soma remeshed')
-    ms_pc = swc.add_mesh_to_point_cloud(ms_soma)
+    area = ms_soma.get_geometric_measures()['surface_area']
+    swc.make_point_cloud(density = 20/area)
+
+    ms_pc = swc.add_mesh_to_point_cloud(ms_soma,includemesh=True)
+    bbox = ms_pc.get_geometric_measures()['bbox']
+
+    ms_pc.meshing_merge_close_vertices(threshold= mlab.PercentageValue(50*l/bbox.diagonal()))
 
 
 
@@ -87,7 +46,7 @@ def main(mesh,source,output,save_pc=False):
     dist['diag_swc'] = bbox_swc.diagonal()
     dist['diag_mesh'] = bbox_mesh.diagonal()
 
-    print('Hausdorff distance information')
+    print('Surface error information')
     for key in dist.keys():
         print(f'{key} : {dist[key]}')
 
