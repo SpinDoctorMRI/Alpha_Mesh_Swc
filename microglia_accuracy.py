@@ -68,7 +68,7 @@ def main(mesh,source,output,save_pc=False):
     print(f'Elapsed time = {time.time() -start:.2f} s')
         
 if __name__=='__main__':
-    '''Input mesh and swc to generate point cloud. The distance between the point cloud and the mesh is computed.
+    description='''Input mesh and swc to generate point cloud. The distance between the point cloud and the mesh is computed.
     Parameters:
         mesh_file (path)
         swc file (path)
@@ -76,9 +76,16 @@ if __name__=='__main__':
         save_pc (optional). If set to 1 then the point cloud is saved with the local mesh error. Used to create plots with view_point_cloud, get_point_cloud_image
                 save_pc also saves a color bar to be used in plotting.
     '''
-    mesh=sys.argv[1]
-    source=sys.argv[2]
-    output=sys.argv[3]
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("mesh", help="Input mesh file.")
+    parser.add_argument("source", help="Input SWC file.")
+    parser.add_argument("output", help="Output text file.")
+    parser.add_argument("--save_pc",help="Optional flag to save point cloud distances",default=0)
+    args = parser.parse_args()
+    mesh=args.mesh
+    source=args.source
+    output=args.output
+    save_pc = args.save_pc == 1
     save_pc = len(sys.argv) == 5
     if save_pc:
         pcname=output.replace('.txt','_pc.ply')

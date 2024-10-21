@@ -2,16 +2,22 @@ from src import simplify_mesh,is_watertight
 import pymeshlab as mlab
 import os
 import time
-import sys
 from os.path import join,abspath,basename,isfile
 import warnings
 from src import Swc
+import argparse
 if __name__=='__main__':
-    '''Apply simplification proceedure to an input directory of meshes.
+    description='''Apply simplification proceedure to an input directory of meshes.
     Custom simplification parameters should be adjusted here.'''
-    input_dir = sys.argv[1]
-    output_dir = sys.argv[2]
-    source_dir = sys.argv[3]
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("input_dir", help="Input mesh directory.")
+    parser.add_argument("source_dir", help="Input SWC directory.")
+    parser.add_argument("output_dir", help="Output simplified mesh files.")
+    args = parser.parse_args()
+
+    input_dir = args.input_dir
+    output_dir = args.output_dir
+    source_dir = args.source_dir
     files = [abspath(join(input_dir,file)) for file in os.listdir(input_dir) if file.endswith(".ply")]
 
     if not(os.path.isdir(output_dir)):

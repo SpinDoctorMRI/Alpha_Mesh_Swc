@@ -5,45 +5,7 @@ import sys
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import time
-
-# def get_raw_point_cloud(file):
-#     swc = Swc2mesh(file,soma_shape='multi-sphere',to_origin=False)
-#     swc.density=1.0
-#     segments,_= swc._create_segments('cell')
-#     point_list = []
-#     normal_list = []
-#     color_list = []
-#     r_min = np.inf
-
-#     # construct point cloud
-#     for iseg in segments[0]:
-#         p, n, c = iseg.output()
-#         point_list.append(p)
-#         normal_list.append(n)
-#         color_list.append(c)
-#         if isinstance(iseg, Frustum):
-#             r_min = min(r_min, iseg.r_min)
-#         elif isinstance(iseg, Sphere):
-#             r_min = min(r_min, iseg.r)
-#     points = np.concatenate(point_list, axis=1)
-#     normals = np.concatenate(normal_list, axis=1)
-#     colors = np.concatenate(color_list, axis=1)
-
-#     m = mlab.Mesh(
-#                 vertex_matrix=points.T,
-#                 v_normals_matrix=normals.T,
-#                 v_color_matrix=colors.T
-#             )
-#     return m,r_min
-# def clean_point_cloud(ms,r_min):
-#     ms.meshing_remove_duplicate_vertices()
-#     bbox = ms.get_geometric_measures()['bbox']
-#     if r_min < 1:
-#         ms.meshing_merge_close_vertices(
-#             threshold=mlab.PercentageValue(10*r_min/bbox.diagonal())
-#         )
-#     ms.apply_normal_normalization_per_vertex()
-#     ms.apply_normal_point_cloud_smoothing(k=5)
+import argparse
 
 def main(mesh,source,output,save_pc=False):
     start=time.time()
@@ -72,7 +34,7 @@ def main(mesh,source,output,save_pc=False):
     dist['diag_swc'] = bbox_swc.diagonal()
     dist['diag_mesh'] = bbox_mesh.diagonal()
 
-    print('Hausdorff distance information')
+    print('Surface error information')
     for key in dist.keys():
         print(f'{key} : {dist[key]}')
 
@@ -88,13 +50,16 @@ def main(mesh,source,output,save_pc=False):
         cmap = mpl.cm.viridis
         norm = mpl.colors.Normalize(vmin=np.min(d), vmax=np.max(d))
         fig, ax = plt.subplots(figsize=(1, 6), layout='constrained')
-        fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap),
-             cax=ax, orientation='vertical', label='Local error')
+        cbar=fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap),
+             cax=ax, orientation='vertical')
+        ticklabs = cbar.ax.get_yticklabels()
+        cbar.ax.set_yticklabels(ticklabs, fontsize=18)
+        cbar.ax.set_ylabel('$d$',fontsize=20)
         plt.savefig(cbar_name, format='png', bbox_inches='tight', dpi=100, transparent=True)
     print(f'Elapsed time = {time.time() -start:.2f} s')
         
 if __name__=='__main__':
-    '''Input mesh and swc to generate point cloud. The distance between the point cloud and the mesh is computed.
+    description='''Input mesh and swc to generate point cloud. The distance between the point cloud and the mesh is computed.
     Parameters:
         mesh_file (path)
         swc file (path)
@@ -102,10 +67,16 @@ if __name__=='__main__':
         save_pc (optional). If set to 1 then the point cloud is saved with the local mesh error. Used to create plots with view_point_cloud, get_point_cloud_image
                 save_pc also saves a color bar to be used in plotting.
     '''
-    mesh=sys.argv[1]
-    source=sys.argv[2]
-    output=sys.argv[3]
-    save_pc = len(sys.argv) == 5
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("mesh", help="Input mesh file.")
+    parser.add_argument("source", help="Input SWC file.")
+    parser.add_argument("output", help="Output text file.")
+    parser.add_argument("--save_pc",help="Optional flag to save point cloud distances",default=0)
+    args = parser.parse_args()
+    mesh=args.mesh
+    source=args.source
+    output=args.output
+    save_pc = args.save_pc == 1
     if save_pc:
         pcname=mesh.replace('.ply','_pc.ply')
     
