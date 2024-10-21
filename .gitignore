@@ -8,8 +8,9 @@ Tools
 *.png
 *.txt
 *.ipynb
-input\1-2-1.CNG_small_alpha.ply
-input\1-2-1.CNG_large_alpha.ply
+input/*.ply
+input/*.ply
 test_batch_input\04b_spindle3aFI.ply
 test_batch_input\A00b2_a1_morphology.CNG.ply
-test_batch_output\*
+test_batch_output
+simplify_meshes_custom.py

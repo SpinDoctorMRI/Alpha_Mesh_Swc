@@ -77,13 +77,7 @@ Point clouds are not saved with this command.
 ### Meshing mixed descriptions (work in progress)
 
 To mesh cells which consist of a separate swc file for the skelton and a surface mesh for the nodes it is necessary to follow the following proceedure.
-
-Fix swc files:
-```
-    python fix_swc.py path/to/swc_file
-```
-
-This creates a clean swc file called file_clean.swc in the original swc location. Rename this file to file.swc and move it to a directory with the soma surface mesh stored as file.wrl (other surface mesh formats acceptable). To mesh the cell launch
+Make sure that cellname.swc and cellname.wrl are saved in the same directory. To mesh the cell launch
 
 ```
     python mesh_microglia.py name=path/to/cellname
