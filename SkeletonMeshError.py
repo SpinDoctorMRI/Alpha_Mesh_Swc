@@ -59,7 +59,7 @@ def main(mesh,source,output,save_pc=False):
     print(f'Elapsed time = {time.time() -start:.2f} s')
         
 if __name__=='__main__':
-    description='''Input mesh and swc to generate point cloud. The distance between the point cloud and the mesh is computed.
+    description='''Input mesh and swc to generate point cloud. The Skeleton to Mesh error is computed
     Parameters:
         mesh_file (path)
         swc file (path)

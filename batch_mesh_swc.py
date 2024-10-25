@@ -3,14 +3,14 @@ import argparse
 import time
 import os
 from mesh_swc import main
-from get_mesh_stats import mesh_stats
+from src.get_mesh_stats import mesh_stats
 
         
            
 
 # Takes as input a directory of swc files and produces surface meshes for each one.
 if __name__ =='__main__':
-    description = """Reads swc files from a directory and produces coarse watertight surface meshs"""
+    description = """Reads swc files from a directory and produces coarse watertight surface meshes"""
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("input_dir", type = str,help="Input SWC directory.")
     parser.add_argument("--output_dir",help="Output directory for meshes")

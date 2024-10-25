@@ -1,11 +1,11 @@
 from setuptools import setup, find_packages
 
-setup(  name='alphaSwc',
+setup(  name='Alpha_Mesh_Swc',
         version='1.0',
         description='Alpha wrapping of neurons from swc files',
         author ='Alex McSweeney-Davis',
         author_email='alex@mcsweeney-davis.com',
-        url='https://github.com/alexmcsd/alphaSwc',
+        url='https://github.com/SpinDoctorMRI/Alpha_Mesh_Swc',
         packages=['src'],
         python_requires='>=3.8',
         install_requires=[
@@ -28,8 +28,8 @@ setup(  name='alphaSwc',
         ],
         keywords='diffusion mri, simulation, meshes, neuron reconstructions',
         project_urls={
-        'Source': 'https://github.com/alexmcsd/alphaSwc',
-        'Tracker': 'https://github.com/alexmcsd/alphaSwc/issues',
+        'Source': 'https://github.com/SpinDoctorMRI/Alpha_Mesh_Swc',
+        'Tracker': 'https://github.com/SpinDoctorMRI/Alpha_Mesh_Swc/issues',
         },
         
         )

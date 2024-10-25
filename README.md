@@ -58,10 +58,10 @@ Optional parameters include:
 If a mesh of a cell already exists in the output directory it is skipped, so if the file is interrupted it may be continued without any repetition.
 
 ----
-### Measuring mesh accuracy
-An individual mesh accuracy is computed through
+### Measuring Skeleton to Mesh Error
+An individual Skeleton to Mesh Error is computed through
 ```
-    python mesh_accuracy.py path/to/mesh_file path/to/swc_file path/to/output_file
+    python SkeletonMeshError.py path/to/mesh_file path/to/swc_file path/to/output_file
 ```
 And saved to the output file. If an additional parameter is added to the command line then the point cloud along with the distances is saved with the mesh_file. Alongside the point cloud a color bar is saved as an image, to see the correspondance between hue and local mesh error. The point cloud can be visualised using open3d and 
 ```
@@ -69,7 +69,7 @@ And saved to the output file. If an additional parameter is added to the command
 ```
 Multiple meshes can be assessed with 
 ```
-    python meshes_accuracy.py directory_of_meshes directory_of_swc_files directory_of_outputs
+    python batch_SkeletonMeshError.py directory_of_meshes directory_of_swc_files directory_of_outputs
 ```
 Point clouds are not saved with this command.
 

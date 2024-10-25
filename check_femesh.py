@@ -3,7 +3,7 @@ from src import call_tetgen,read_tetgen
 import sys
 import numpy as np
 import time
-from get_mesh_stats import find_mesh_quality
+from src.get_mesh_stats import find_mesh_quality
 
 def main(file,output,ext='.ply'):
     start = time.time()

@@ -165,24 +165,24 @@ def simplify_mesh(ms,dfaces=1000,r_min=0.1,min_faces=2000,temp_dir_name=None,max
     ms_cp = dcp_meshset(ms)
 
     # Attempt aggressive simplification on the new mesh.
-    if is_watertight(ms,temp_dir_name):
-        agg_simp_terminated = False
-        new_number = 0
-        while not(flag) and attempt < max_attempts:
-            if new_number> old_number:
-                agg_simp_terminated = True
-                break
-            print(f'Applying simplification, attempt = {attempt}')
-            
-            ms,flag = simplify_mesh_further(ms,(attempt-1)*dfaces + min_faces,r_min,temp_dir_name)
-            new_number = ms.current_mesh().face_number()
-            print(f'Old number of faces = {old_number} ,new number of faces = {new_number}, watertight = {flag}')
-            attempt+= 1
-            if not(flag):
-                ms = dcp_meshset(ms_cp)
-    else:
-        print('Isotropic remshing failed to preserve watertightness')
-        agg_simp_terminated=True
+    # if is_watertight(ms,temp_dir_name):
+    agg_simp_terminated = False
+    new_number = 0
+    while not(flag) and attempt < max_attempts:
+        if new_number> old_number:
+            agg_simp_terminated = True
+            break
+        print(f'Applying simplification, attempt = {attempt}')
+        
+        ms,flag = simplify_mesh_further(ms,(attempt-1)*dfaces + min_faces,r_min,temp_dir_name)
+        new_number = ms.current_mesh().face_number()
+        print(f'Old number of faces = {old_number} ,new number of faces = {new_number}, watertight = {flag}')
+        attempt+= 1
+        if not(flag):
+            ms = dcp_meshset(ms_cp)
+    # else:
+    #     print('Isotropic remshing failed to preserve watertightness')
+    #     agg_simp_terminated=True
     
     # If previous attempt failed, conduct emergency remeshing on the original mesh.
     if (attempt == max_attempts and not(flag)) or agg_simp_terminated:

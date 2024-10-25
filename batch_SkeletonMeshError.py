@@ -1,6 +1,6 @@
-import sys
+import argparse
 import os
-from mesh_accuracy import main
+from SkeletonMeshError import main
 import sqlite3
 import pandas as pd
 
@@ -32,17 +32,22 @@ def read_gathered_data(direc):
 
 
 if __name__=='__main__':
-    direc = sys.argv[1]
-    swc_direc = sys.argv[2]
-    output_direc=sys.argv[3]
-    if len(sys.argv) >=5:
-        remove_suffix = sys.argv[4]
-    else:
-        remove_suffix = ''
-    if len(sys.argv) == 6:
-        add_suffix = sys.argv[5]
-    else:
-        add_suffix = ''
+    description=''' Compute the Skeleton to Mesh error for all meshes in a directory'''
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("mesh_dir", help="Input mesh directory.")
+    parser.add_argument("source_dir", help="Input SWC directory.")
+    parser.add_argument("output_dir", help="Output text directory.")
+    parser.add_argument("--save_pc",help="Optional flag to save point cloud distances",default=0,type=int)
+    parser.add_argument("--remove_suffix",help="Suffix added to mesh file which is not present in swc file",default='')
+    parser.add_argument("--add_suffix",help="Suffix removed from mesh file which is present in swc file",default='')
+    
+    args = parser.parse_args()
+    direc = args.mesh_dir
+    swc_direc = args.source_dir
+    output_direc=args.output_dir
+    save_pc = args.save_pc ==1
+    remove_suffix=args.remove_suffix
+    add_suffix=args.add_suffix
     if not(os.path.isdir(output_direc)):
         os.mkdir(output_direc)
 
@@ -62,7 +67,7 @@ if __name__=='__main__':
                 print(f'{file} already completed')
             else:
                 print(mesh)
-                main(mesh,source,output)
+                main(mesh,source,output,save_pc)
         except:
             print(f'Error with {file}')
 
