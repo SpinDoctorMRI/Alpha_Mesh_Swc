@@ -216,7 +216,7 @@ class Sphere(Segment):
         """
 
         npoint = int(20 * self.density * self.area)
-        npoint = np.max([128, npoint])
+        # npoint = np.max([128, npoint])
         normals = unitsphere(int(npoint))
 
         return self.r * normals + self.center, normals
@@ -416,54 +416,58 @@ class Frustum(Segment):
         else:
             npoint_lateral = int(self.density*(50 + 100*self.h))
         # npoint_lateral = np.max([npoint_lateral, 200])
-
+        npoint_lateral = int(20 * self.density * self.lateral_area)
         # create lateral points and normals
         points_lateral, theta = self._localfrustum(npoint_lateral)
         normals_lateral = self._rotate_local_normal(
             theta, self.local_lateral_normal)
 
         # get top sphere
-        nsphere = int(self.density * self.top_area)
-        nsphere = np.max([nsphere, 64])
+        nsphere = int(20*self.density * self.top_area)
+        # nsphere = np.max([nsphere, 64])
         sphere = unitsphere(2 * nsphere)
         points_top = self.rb * sphere[:, :nsphere]
         points_top[2, :] += self.h
         normals_top = sphere[:, :nsphere]
 
         # get bottom sphere
-        nsphere = int(self.density * self.bottom_area)
-        nsphere = np.max([nsphere, 64])
+        nsphere = int(20 * self.density * self.bottom_area)
+        # nsphere = np.max([nsphere, 64])
         sphere = unitsphere(2 * nsphere)
         points_bottom = self.ra * sphere[:, nsphere:]
         normals_bottom = sphere[:, nsphere:]
+        # # get top junction
+        # npoint_junc_top = int(self.density * 16)
+        # npoint_junc_top = np.max([npoint_junc_top, 16])
+        # normals_junc_top, theta = unitcircle(npoint_junc_top)
+        # points_junc_top = self.rb * normals_junc_top
+        # points_junc_top[2, :] += self.h
+        # normals_junc_top2 = self._rotate_local_normal(
+        #     theta, self.local_lateral_normal)
+        # normals_junc_top += normals_junc_top2
+        # normals_junc_top = normals_junc_top / LA.norm(normals_junc_top, axis=0)
 
-        # get top junction
-        npoint_junc_top = int(self.density * 16)
-        npoint_junc_top = np.max([npoint_junc_top, 16])
-        normals_junc_top, theta = unitcircle(npoint_junc_top)
-        points_junc_top = self.rb * normals_junc_top
-        points_junc_top[2, :] += self.h
-        normals_junc_top2 = self._rotate_local_normal(
-            theta, self.local_lateral_normal)
-        normals_junc_top += normals_junc_top2
-        normals_junc_top = normals_junc_top / LA.norm(normals_junc_top, axis=0)
+        # # get bottom junction
+        # npoint_junc_bottom = int(self.density * 16)
+        # npoint_junc_bottom = np.max([npoint_junc_bottom, 16])
+        # normals_junc_bottom, theta = unitcircle(npoint_junc_bottom)
+        # points_junc_bottom = self.ra * normals_junc_bottom
+        # normals_junc_bottom2 = self._rotate_local_normal(
+        #     theta, self.local_lateral_normal)
+        # normals_junc_bottom += normals_junc_bottom2
+        # normals_junc_bottom = normals_junc_bottom / \
+        #     LA.norm(normals_junc_bottom, axis=0)
 
-        # get bottom junction
-        npoint_junc_bottom = int(self.density * 16)
-        npoint_junc_bottom = np.max([npoint_junc_bottom, 16])
-        normals_junc_bottom, theta = unitcircle(npoint_junc_bottom)
-        points_junc_bottom = self.ra * normals_junc_bottom
-        normals_junc_bottom2 = self._rotate_local_normal(
-            theta, self.local_lateral_normal)
-        normals_junc_bottom += normals_junc_bottom2
-        normals_junc_bottom = normals_junc_bottom / \
-            LA.norm(normals_junc_bottom, axis=0)
-
+        # # assemble points and normals
+        # points = np.hstack((points_top, points_junc_top,
+        #                    points_lateral, points_junc_bottom, points_bottom))
+        # normals = np.hstack((normals_top, normals_junc_top,
+        #                     normals_lateral, normals_junc_bottom, normals_bottom))
         # assemble points and normals
-        points = np.hstack((points_top, points_junc_top,
-                           points_lateral, points_junc_bottom, points_bottom))
-        normals = np.hstack((normals_top, normals_junc_top,
-                            normals_lateral, normals_junc_bottom, normals_bottom))
+        points = np.hstack((points_top,
+                           points_lateral, points_bottom))
+        normals = np.hstack((normals_top,
+                            normals_lateral, normals_bottom))
 
         return points, normals
 
@@ -603,7 +607,8 @@ class Frustum(Segment):
     @property
     def lateral_area(self):
         """Lateral surface area of the frustum."""
-        return np.pi * self.slant_h * (self.ra + self.rb)
+        # return np.pi * self.slant_h * (self.ra + self.rb)
+        return 2*np.pi *np.sqrt(self.h**2 + (self.r_max - self.r_min)**2)
 
     @property
     def top_area(self):

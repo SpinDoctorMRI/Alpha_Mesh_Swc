@@ -14,3 +14,6 @@ test_batch_input\04b_spindle3aFI.ply
 test_batch_input\A00b2_a1_morphology.CNG.ply
 test_batch_output
 simplify_meshes_custom.py
+cylinder.ply
+file.swc
+pc.ply

@@ -262,6 +262,8 @@ class Swc():
                 r_min = min(r_min, iseg.r_min)
             elif isinstance(iseg, Sphere):
                 r_min = min(r_min, iseg.r)
+            # print(f'Density = {iseg.area/len(iseg.points.T)}')
+            # print(len(iseg.points.T))
         points = np.concatenate(point_list, axis=1)
         normals = np.concatenate(normal_list, axis=1)
         colors = np.concatenate(color_list, axis=1)
@@ -275,9 +277,8 @@ class Swc():
         ms.meshing_remove_duplicate_vertices()
         bbox = ms.get_geometric_measures()['bbox']
         # if r_min < 1:
-        #     ms.meshing_merge_close_vertices(
-        #         threshold=mlab.PercentageValue(10*r_min/bbox.diagonal())
-        #     )
+        ms.meshing_merge_close_vertices(threshold=mlab.PercentageValue(10*r_min/bbox.diagonal()))
+            # )
         # ms.apply_normal_normalization_per_vertex()
         # ms.apply_normal_point_cloud_smoothing(k=5)
         print(f'Size of point cloud = {ms.current_mesh().vertex_number()}')
