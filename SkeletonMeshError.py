@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import time
 import argparse
 
-def main(mesh,source,output,save_pc=False):
+def main(mesh,source,output,save_pc=False,soma_mesh=None):
     start=time.time()
     ms = mlab.MeshSet()
     ms.load_new_mesh(mesh)
@@ -17,7 +17,14 @@ def main(mesh,source,output,save_pc=False):
     # ms.add_mesh(m)
     # clean_point_cloud(ms,r_min) 
     swc = Swc(source,process=False)
-    ms_pc= swc.make_point_cloud()
+    if soma_mesh is not None:
+        swc.make_point_cloud()
+        ms_soma = mlab.MeshSet()
+        ms_soma.load_new_mesh(soma_mesh)
+        ms_pc = swc.add_mesh_to_point_cloud(ms_soma,includemesh=True)
+    else:
+        ms_pc= swc.make_point_cloud()
+
     # ms_pc.save_current_mesh('test.ply',binary=False)
     ms.add_mesh(ms_pc.current_mesh())
     # dist = ms.get_hausdorff_distance(sampledmesh=0,targetmesh=1,sampleedge=True,sampleface=True)
@@ -64,6 +71,7 @@ if __name__=='__main__':
         mesh_file (path)
         swc file (path)
         output file (path)
+        soma_mesh (optional) path of soma mesh
         save_pc (optional). If set to 1 then the point cloud is saved with the local mesh error. Used to create plots with view_point_cloud, get_point_cloud_image
                 save_pc also saves a color bar to be used in plotting.
     '''
@@ -71,14 +79,16 @@ if __name__=='__main__':
     parser.add_argument("mesh", help="Input mesh file.")
     parser.add_argument("source", help="Input SWC file.")
     parser.add_argument("output", help="Output text file.")
+    parser.add_argument("--soma_mesh",help="Optional flag for separate soma mesh",default=None)
     parser.add_argument("--save_pc",help="Optional flag to save point cloud distances",default=0)
     args = parser.parse_args()
     mesh=args.mesh
     source=args.source
     output=args.output
+    soma_mesh = args.soma_mesh
     save_pc = args.save_pc == 1
     if save_pc:
         pcname=mesh.replace('.ply','_pc.ply')
     
-    main(mesh,source,output,save_pc)
+    main(mesh,source,output,save_pc,soma_mesh)
     
