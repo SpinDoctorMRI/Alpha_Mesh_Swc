@@ -80,7 +80,7 @@ if __name__=='__main__':
     parser.add_argument("source", help="Input SWC file.")
     parser.add_argument("output", help="Output text file.")
     parser.add_argument("--soma_mesh",help="Optional flag for separate soma mesh",default=None)
-    parser.add_argument("--save_pc",help="Optional flag to save point cloud distances",default=0)
+    parser.add_argument("--save_pc",help="Optional flag to save point cloud distances",default=0,type=int)
     args = parser.parse_args()
     mesh=args.mesh
     source=args.source
@@ -88,7 +88,7 @@ if __name__=='__main__':
     soma_mesh = args.soma_mesh
     save_pc = args.save_pc == 1
     if save_pc:
-        pcname=mesh.replace('.ply','_pc.ply')
+        pcname=output.replace('.txt','_pc.ply')
     
     main(mesh,source,output,save_pc,soma_mesh)
     

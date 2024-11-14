@@ -2,116 +2,6 @@
 
 This is a software package designed to automatically generate accurate watertight surface meshes from swc files for simulation purposes. The paper introducing and describing the package will be linked here upon publication.
 
-----
-
-## Paper scripts
-
-To install the repositery and access these scripts run:
-```
-    git clone https://github.com/SpinDoctorMRI/Alpha_Mesh_Swc;
-    cd Alpha_Mesh_Swc;
-    git checkout Paper_Scripts;
-```
-
-To install the necessary python prerequisites run:
-```
-pip install -r requirements.txt
-```
-
-### Neurons
-To run the two neurons tested in section 4.1 run:
-
-```
-mkdir output;
-python mesh_swc.py input/04b_spindle3aFI.swc --output_dir=output;
-python mesh_swc.py input/1-2-1.CNG.swc --output_dir=output;
-```
-
-To obtain the Skeleton to Mesh Error run:
-
-```
-python SkeletonMeshError.py output/04b_spindle3aFI.ply input/04b_spindle3aFI.swc output/04b_spindle3aFI_SME.txt --save_pc==1;
-python SkeletonMeshError.py output/1-2-1.CNG.ply input/1-2-1.CNG.swc output/1-2-1.CNG_SME.txt --save_pc==1;
-```
-
-The Skeleton to Mesh Error is the RMS value in the *_SME.txt file. To visualize the full distribution of the scalar field d, run
-
-```
-python view_outputs/view_point_cloud.py output/04b_spindle3aFI_pc.ply;
-python view_outputs/view_point_cloud.py output/1-2-1.CNG_pc.ply;
-```
-
-Visualizing the surface meshes can be done in 3rd party software (e.g. Windows 3d viewer) or by running:
-
-```
-python view_outputs/add_color.py output/04b_spindle3aFI.ply;
-python view_outputs/view_surface_mesh.py output/04b_spindle3aFI.ply;
-
-python view_outputs/add_color.py output/1-2-1.CNG.ply;
-python view_outputs/view_surface_mesh.py output/1-2-1.CNG.ply;
-```
-
-The surface meshes and point clouds can be plotted in the same window with:
-
-```
-python view_outputs/view_error.py output/04b_spindle3aFI.ply output/04b_spindle3aFI_pc.ply;
-python view_outputs/view_error.py output/1-2-1.CNG.ply output/1-2-1.CNG.ply;
-```
-
-### Microglia
-To create the microglia meshes run:
-
-```bash
-mkdir Microglia/Amoeboid_output
-for file in Microglia/Amoeboid/*.swc; do
-    cellname="${file%.*}";
-    echo "Meshing $cell";
-    python mesh_microglia.py $cellname --log=1 --output_dir=Microglia/Amoeboid_output --alpha=0.001;
-done
-
-mkdir Microglia/Ramified_output
-for file in Microglia/Ramified/*.swc; do
-    cellname="${file%.*}";
-    echo "Meshing $cell";
-    python mesh_microglia.py $cellname --log=1 --output_dir=Microglia/Ramified_output --alpha=0.001;
-done
-```
-
-To test the accuracy of the microglia we run:
-
-```bash
-for file in Microglia/Amoeboid_output/*.ply; do
-    meshname=$(basename $file);
-    cellname="${meshname%.*}";
-    python SkeletonMeshError.py $file "Microglia/Amoeboid/"$cellname".swc" "Microglia/Amoeboid_output"/$cellname"_SME.txt" --soma_mesh="Microglia/Amoeboid/"$cellname".wrl" --save_pc=1;
-done
-
-for file in Microglia/Ramified_output/*.ply; do
-    meshname=$(basename $file);
-    cellname="${meshname%.*}";
-    python SkeletonMeshError.py $file "Microglia/Ramified/"$cellname".swc" "Microglia/Ramified_output"/$cellname"_SME.txt" --soma_mesh="Microglia/Ramified/"$cellname".wrl" --save_pc=1;
-done
-```
-
-### 1-2-2.CNG
-This cell was used to test the effect of Skeleton to Mesh Error on dMRI simulations. To compute the mesh and Skelton to Mesh Error run:
-```
-python mesh_swc.py input/1-2-2.CNG.swc --output_dir=output;
-python SkeletonMeshError.py output/1-2-2.CNG.ply input/1-2-2.CNG.swc output/1-2-2.CNG_SME.txt --save_pc==1;
-```
-Visualise the results with:
-```
-python view_outputs/view_point_cloud.py output/1-2-2.CNG_pc.ply;
-python view_outputs/add_color.py output/1-2-2.CNG.ply;
-python view_outputs/view_ply.py output/1-2-2.CNG.ply;
-```
-
-### Diffusion MRI simulations
-To do: Add link.
-
-### Modified Ultraliser scripts
-To do: Add description.
-
 -----
 ## Setup and requirements
 
@@ -228,6 +118,26 @@ The point cloud can be plotted alongside the mesh using
 ```
 where cellname is the name of the mesh file without any extension.
 ----
+
+## Microglia examples
+To create the microglia meshes run:
+
+```bash
+mkdir Microglia/Amoeboid_output
+for file in Microglia/Amoeboid/*.swc; do
+    cellname="${file%.*}";
+    echo "Meshing $cell";
+    python mesh_microglia.py $cellname --log=1 --output_dir=Microglia/Amoeboid_output --alpha=0.001;
+done
+
+mkdir Microglia/Ramified_output
+for file in Microglia/Ramified/*.swc; do
+    cellname="${file%.*}";
+    echo "Meshing $cell";
+    python mesh_microglia.py $cellname --log=1 --output_dir=Microglia/Ramified_output --alpha=0.001;
+done
+```
+
 ## Misc
 check_femesh.py and check_femeshes.py are used to test the quality of finite element meshes but do not store them for storage purposes. To create finite element meshes use the surface mesh as an input to TetGen or other meshing software.
 
