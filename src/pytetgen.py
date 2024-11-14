@@ -20,7 +20,7 @@ def call_tetgen(file,args='-d'):
         msg = f'{platform} not supported for TetGen use\n Trying linux command'
         warnings.warn(msg)
         tetgen_cmd = f'{tetgen_base_path}/tetgen/lin64/tetgen'
-    if platform !='linux' and platform =='linux2':
+    if platform !='linux' and platform !='linux2':
         print(f'{tetgen_cmd} {args} {file}')
         output = os.popen(f'{tetgen_cmd} {args} {file}').read()
     else:

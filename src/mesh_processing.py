@@ -89,7 +89,8 @@ def is_watertight_tetgen(ms,temp_dir_name):
     """
     dir = os.path.join(os.getcwd(),temp_dir_name)
     print(f'Making {dir}')
-    os.mkdir(dir)
+    if not(os.path.isdir(dir)):
+        os.mkdir(dir)
     ms.save_current_mesh(os.path.join(dir,'test.ply'),binary=False)
     output =   call_tetgen(os.path.join(dir,'test.ply'),'-dBENF')
     print(f'Removing {dir}')
