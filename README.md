@@ -45,10 +45,10 @@ Visualizing the surface meshes can be done in 3rd party software (e.g. Windows 3
 
 ```
 python view_outputs/add_color.py output/04b_spindle3aFI.ply;
-python view_outputs/view_ply.py output/04b_spindle3aFI.ply;
+python view_outputs/view_surface_mesh.py output/04b_spindle3aFI.ply;
 
 python view_outputs/add_color.py output/1-2-1.CNG.ply;
-python view_outputs/view_ply.py output/1-2-1.CNG.ply;
+python view_outputs/view_surface_mesh.py output/1-2-1.CNG.ply;
 ```
 
 The surface meshes and point clouds can be plotted in the same window with:
