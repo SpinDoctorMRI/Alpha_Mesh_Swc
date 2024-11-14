@@ -13,13 +13,19 @@ def call_tetgen(file,args='-d'):
     elif platform =='darwin':
         tetgen_cmd = f'{tetgen_base_path}/tetgen/mac64/tetgen'
     elif platform == "linux" or platform == "linux2":
-        tetgen_cmd = f'{tetgen_base_path}/tetgen/lin64/tetgen'
+        print('using linux')
+        cwd = os.getcwd()
+        tetgen_cmd = f'cd {tetgen_base_path}/tetgen/lin64;\ntetgen.exe'
     else:
         msg = f'{platform} not supported for TetGen use\n Trying linux command'
         warnings.warn(msg)
         tetgen_cmd = f'{tetgen_base_path}/tetgen/lin64/tetgen'
-    print(f'{tetgen_cmd} {args} {file}')
-    output = os.popen(f'{tetgen_cmd} {args} {file}').read()
+    if platform !='linux' and platform =='linux2':
+        print(f'{tetgen_cmd} {args} {file}')
+        output = os.popen(f'{tetgen_cmd} {args} {file}').read()
+    else:
+        print(f'{tetgen_cmd} {args} {file}; cd {cwd}')
+        output = os.popen(f'{tetgen_cmd} {args} {file};\n cd {cwd};').read()
     print(output)
     return output
 

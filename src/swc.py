@@ -159,9 +159,9 @@ class Swc():
             total_length = self.get_length()
             dfaces = int(total_length*8)
         if min_faces is None or int(min_faces)<dfaces/2:
-            min_faces = int(dfaces/2)
+            min_faces = int(dfaces/4)
         else:
-            min_faces = int(min_faces/2)
+            min_faces = int(min_faces/4)
         print(f'Simplifying {self.file} to at least {min_faces} faces')
         r_min = max(min(self.radius_data),min_r_min)
         ms = simplify_mesh(ms_alpha,dfaces,r_min,min_faces,temp_dir_name)
