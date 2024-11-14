@@ -30,15 +30,15 @@ python mesh_swc.py input/1-2-1.CNG.swc --output_dir=output;
 To obtain the Skeleton to Mesh Error run:
 
 ```
-python SkeletonMeshError.py output/04b_spindle3aFI.ply input/04b_spindle3aFI.swc output/04b_spindle3aFI_SME.txt --save_pc==1;
-python SkeletonMeshError.py output/1-2-1.CNG.ply input/1-2-1.CNG.swc output/1-2-1.CNG_SME.txt --save_pc==1;
+python SkeletonMeshError.py output/04b_spindle3aFI.ply input/04b_spindle3aFI.swc output/04b_spindle3aFI_SME.txt --save_pc=1;
+python SkeletonMeshError.py output/1-2-1.CNG.ply input/1-2-1.CNG.swc output/1-2-1.CNG_SME.txt --save_pc=1;
 ```
 
 The Skeleton to Mesh Error is the RMS value in the *_SME.txt file. To visualize the full distribution of the scalar field d, run
 
 ```
-python view_outputs/view_point_cloud.py output/04b_spindle3aFI_pc.ply;
-python view_outputs/view_point_cloud.py output/1-2-1.CNG_pc.ply;
+python view_outputs/view_point_cloud.py output/04b_spindle3aFI_SME_pc.ply;
+python view_outputs/view_point_cloud.py output/1-2-1.CNG_SME_pc.ply;
 ```
 
 Visualizing the surface meshes can be done in 3rd party software (e.g. Windows 3d viewer) or by running:
@@ -54,8 +54,8 @@ python view_outputs/view_surface_mesh.py output/1-2-1.CNG.ply;
 The surface meshes and point clouds can be plotted in the same window with:
 
 ```
-python view_outputs/view_error.py output/04b_spindle3aFI.ply output/04b_spindle3aFI_pc.ply;
-python view_outputs/view_error.py output/1-2-1.CNG.ply output/1-2-1.CNG.ply;
+python view_outputs/view_error.py output/04b_spindle3aFI.ply output/04b_spindle3aFI_SME_pc.ply;
+python view_outputs/view_error.py output/1-2-1.CNG.ply output/1-2-1.CNG_SME_pc.ply;
 ```
 
 ### Microglia
