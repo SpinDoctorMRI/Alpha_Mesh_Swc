@@ -1,0 +1,5 @@
+numpy
+scipy
+trimesh
+pymeshlab>=2023.12.post1
+open3d

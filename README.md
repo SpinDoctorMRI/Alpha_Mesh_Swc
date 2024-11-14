@@ -6,8 +6,14 @@ This is a software package designed to automatically generate accurate watertigh
 
 ## Paper scripts
 
-To install the necessary prerequisites run:
+To install the repositery and access these scripts run:
+```
+    git clone https://github.com/SpinDoctorMRI/Alpha_Mesh_Swc;
+    cd Alpha_Mesh_Swc;
+    git checkout Paper_Scripts;
+```
 
+To install the necessary python prerequisites run:
 ```
 pip install -r requirements.txt
 ```
