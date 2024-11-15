@@ -3,3 +3,7 @@ src/__pycache__
 test_batch_output
 test_batch_accuracy
 output
+/1000_swc_files
+/__pycache__
+/1000_surface_meshes
+/Random_swc_files

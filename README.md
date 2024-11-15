@@ -8,16 +8,19 @@ This is a software package designed to automatically generate accurate watertigh
 
 To install the repositery and access these scripts run:
 ```
-    git clone https://github.com/SpinDoctorMRI/Alpha_Mesh_Swc;
-    cd Alpha_Mesh_Swc;
-    git checkout Paper_Scripts;
+git clone https://github.com/SpinDoctorMRI/Alpha_Mesh_Swc;
+cd Alpha_Mesh_Swc;
+git checkout Paper_Scripts;
 ```
 
 To install the necessary python prerequisites run:
 ```
 pip install -r requirements.txt
 ```
-
+Some of the visualisation tools require opend3d. This can be installed with pip but is not necessary to compute the meshes.
+```
+pip install open3d
+```
 ### Neurons
 To run the two neurons tested in section 4.1 run:
 
@@ -59,8 +62,7 @@ python view_outputs/view_error.py output/1-2-1.CNG.ply output/1-2-1.CNG_SME_pc.p
 ```
 
 ### Microglia
-To create the microglia meshes run:
-
+To create the microglia meshes on a linux system run:
 ```bash
 mkdir Microglia/Amoeboid_output
 for file in Microglia/Amoeboid/*.swc; do
@@ -76,9 +78,11 @@ for file in Microglia/Ramified/*.swc; do
     python mesh_microglia.py $cellname --log=1 --output_dir=Microglia/Ramified_output --alpha=0.001;
 done
 ```
+The corresponding script on windows is given by 
+```powershell
 
-To test the accuracy of the microglia we run:
-
+```
+To test the accuracy of the microglia on linux run:
 ```bash
 for file in Microglia/Amoeboid_output/*.ply; do
     meshname=$(basename $file);
@@ -91,6 +95,10 @@ for file in Microglia/Ramified_output/*.ply; do
     cellname="${meshname%.*}";
     python SkeletonMeshError.py $file "Microglia/Ramified/"$cellname".swc" "Microglia/Ramified_output"/$cellname"_SME.txt" --soma_mesh="Microglia/Ramified/"$cellname".wrl" --save_pc=1;
 done
+```
+The corresponding powershell script is given by:
+```powershell
+
 ```
 
 ### 1-2-2.CNG
