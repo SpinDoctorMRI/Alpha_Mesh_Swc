@@ -40,13 +40,15 @@ if __name__=='__main__':
 
             if is_watertight(ms,name=file.replace('.ply','')):
                 swc = Swc(join(source_dir,filename.replace('.ply','.swc')))
-                length = swc.get_length()
-                dfaces  =int(1*length)
-                min_faces = 2000
+                total_length = swc.get_length()
+                dfaces = int(total_length*8)
+                min_faces = int(total_length*2)
+                r_min = max(min(swc.radius_data),0.05)
+
                 # Using default hard-coded parameter    s.
                 # ms = simplify_mesh(ms,temp_dir_name=output_file.replace('.ply','')) 
                 # Using custom simplification parameters here.
-                ms = simplify_mesh(ms,dfaces=dfaces,r_min=0.5,min_faces=min_faces,temp_dir_name=output_file.replace('.ply',''))
+                ms = simplify_mesh(ms,dfaces=dfaces,r_min=r_min,min_faces=min_faces,temp_dir_name=output_file.replace('.ply',''))
                 
                 print(f"Elapsed time = {time.time() - start:.1f}")
                 if ms.current_mesh().vertex_number() < start_vertices:

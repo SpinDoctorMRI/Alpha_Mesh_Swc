@@ -5,17 +5,12 @@ import os
 
 if __name__=='__main__':
     '''Convert a surface mesh to ply format'''
-    direc = sys.argv[1]
-    output_dir = sys.argv[2]
+    input_file = sys.argv[1]
+    output_name = sys.argv[2]
     ms = mlab.MeshSet()
-    files = os.listdir(direc)
-    for file in files:
-        try:
-            ms.load_new_mesh(os.path.join(direc,file))
-            filename, file_extension = os.path.splitext(file)
-            output = os.path.join(output_dir,filename+'.ply')
-            ms.save_current_mesh(output,binary=False)
-            print(f'Converted {file}')
-        except:
-            print(f'Error with {file}')
-        ms.clear()
+    ms.load_new_mesh(input_file)
+    filename, file_extension = os.path.splitext(os.path.basename(input_file))
+    output = output_name + '.ply'
+    ms.save_current_mesh(output,binary=False)
+    print(f'Converted {input_file}')
+    

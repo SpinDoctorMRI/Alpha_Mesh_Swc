@@ -2,4 +2,3 @@ pymeshlab>=2023.12.post1
 numpy
 scipy
 trimesh
-open3d
