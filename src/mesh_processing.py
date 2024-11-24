@@ -72,7 +72,7 @@ def is_watertight(ms,name=None):
     except ImportError as e:
         print(repr(e))
         warnings.warn('Appplying PymeshLab filter instead. Accuracy may be lower.')
-        ms.compute_selection_by_small_disconnected_components_per_face()
+        ms.compute_selection_by_self_intersections_per_face()
         no_self_intersections= ms.current_mesh().selected_face_number() == 0
         
     flag = tmesh.is_watertight and no_self_intersections
@@ -142,6 +142,9 @@ def simplify_mesh(ms,dfaces=1000,r_min=0.1,min_faces=2000,temp_dir_name=None,max
     
     # Save the original mesh
     ms_alpha = dcp_meshset(ms)
+    # only keep the largest component
+    ms.compute_selection_by_small_disconnected_components_per_face(nbfaceratio=0.99)
+    ms.meshing_remove_selected_vertices_and_faces()
 
     if temp_dir_name == None:
         warnings.warn("Making temp directory in current directory")
@@ -187,7 +190,10 @@ def simplify_mesh(ms,dfaces=1000,r_min=0.1,min_faces=2000,temp_dir_name=None,max
     
     # If previous attempt failed, conduct emergency remeshing on the original mesh.
     if (attempt == max_attempts and not(flag)) or agg_simp_terminated:
-        ms = dcp_meshset(ms_alpha)
+        ms = dcp_meshset(ms_alpha)        
+        # only keep the largest component
+        ms.compute_selection_by_small_disconnected_components_per_face(nbfaceratio=0.99)
+        ms.meshing_remove_selected_vertices_and_faces()
         print('Emergency remeshing')
         attempt = 1
         flag = False

@@ -24,6 +24,7 @@ time_skeleton="$(time ($path_to_Ultraliser/ultraNeuroMorpho2Mesh --morphology=$f
 meshfile=$temp/meshes/$name-watertight.ply
 if ! [ -f $meshfile ]; then
     echo "No skelton produced by Ultraliser" >> $logfile;
+    rm -rf $temp;
     return [n];
 fi;
 
@@ -32,15 +33,15 @@ rmdir $temp/meshes
 
 
 echo "Applying merge with Ultraliser";
-time_merging="$(time ($path_to_Ultraliser/ultraMeshes2Mesh --input-directory=$temp --output-directory=$temp --export-ply-mesh --ignore-marching-cubes-mesh --ignore-laplacian-mesh)  2>&1 1>/dev/null )"
+time_merging="$(time ($path_to_Ultraliser/ultraMeshes2Mesh --input-directory=$temp  --output-directory=$temp --export-ply-mesh --ignore-marching-cubes-mesh --ignore-laplacian-mesh)  2>&1 1>/dev/null )"
 mv $temp/meshes/$fbname-watertight.ply $temp/$fbname.ply;
-rmdir $temp/meshes;
-cp $temp/$fbname.ply $temp/$fbname"-non-simplified.ply";
+rm -rf $temp/meshes;
+# cp $temp/$fbname.ply $temp/$fbname"-non-simplified.ply";
 
 echo "Applying simplification";
 time_simplifying="$(time (python simplify_mesh.py $file $temp/$fbname.ply --output_dir=$output)  2>&1 1>/dev/null )"
-echo "Uncomment line below to only save final mesh";
-# rm -rf $temp
+# echo "Uncomment line below to only save final mesh";
+rm -rf $temp
 
 echo "Writing times";
 echo "Soma meshing" >> $logfile;
@@ -58,15 +59,20 @@ echo "Meshed $fbname"
 
 mkdir Modified_Ultraliser/output
 
-# echo "Producing mesh for 1-2-1.CNG.swc"
-# file=input/1-2-1.CNG.swc; output=Modified_Ultraliser/output;
-# mesh $file
+echo "Set input swc files here:";
+input=1000_swc_files;
+output=Modified_Ultraliser/output;
 
-echo "Producing mesh for 1-2-2.CNG.swc"
-file=input/1-2-2.CNG.swc; output=Modified_Ultraliser/output;
-mesh $file
-
-# echo "Producing mesh for 04b_spindle3aFI.swc"
-# file=input/04b_spindle3aFI.swc; output=Modified_Ultraliser/output;
-# mesh $file
+echo "Meshing $input";
+for file in $input/*.swc; do
+    fbname=$(basename "$file" .swc);
+    meshfile="$output/$fbname.ply";
+    logfile=$output/$fbname"_log.txt";
+    if [ -f $logfile ]; then
+    echo "$logfile already exists\nSkipping mesh";
+    else
+    echo "Meshing $file";
+    mesh $file;
+    fi
+done;
 

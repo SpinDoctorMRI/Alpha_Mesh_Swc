@@ -7,3 +7,15 @@ output
 /__pycache__
 /1000_surface_meshes
 /Random_swc_files
+/1000_FE_data
+/1000_SME
+/Modified_Ultraliser/output_refined_10
+/Modified_Ultraliser/output_refined_8
+/Private
+/view_outputs/__pycache__
+/Modified_Ultraliser/Ultraliser
+/10_swc_files
+/Modified_Ultraliser/FE_data
+/Modified_Ultraliser/output_optimized
+/Modified_Ultraliser/SME
+/view_outputs/__pycache__

@@ -52,7 +52,7 @@ if __name__=='__main__':
         os.mkdir(output_direc)
 
     files = [file for file in os.listdir(direc) if file.endswith('.ply') or file.endswith('.obj')]
-    for file in files:
+    for i,file in enumerate(files):
         mesh= f'{direc}/{file}'
         if file.endswith('.ply'):
             ext = '.ply'
@@ -66,11 +66,11 @@ if __name__=='__main__':
             if os.path.isfile(output):
                 print(f'{file} already completed')
             else:
-                print(mesh)
+                print(f'Running {mesh}: {i}/{len(files)}')
                 main(mesh,source,output,save_pc)
         except:
             print(f'Error with {file}')
 
-    summary_file=os.path.join(output_direc,'summary.db')
-    print(f'Analysis complete, creating summary in {summary_file}')
-    gather_data(output_direc)
+    # summary_file=os.path.join(output_direc,'summary.db')
+    # print(f'Analysis complete, creating summary in {summary_file}')
+    # gather_data(output_direc)

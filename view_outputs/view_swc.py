@@ -41,7 +41,7 @@ def draw_swc(filename):
             radius1 = radius
             radius2 = data[predecessor, 5]
             segment = data[[i, predecessor], 2:5]
-            cone = create_truncated_cone(segment, radius1, radius1)
+            cone = create_truncated_cone(segment, radius1, radius2)
             primitives.append(cone)
     return primitives
 
