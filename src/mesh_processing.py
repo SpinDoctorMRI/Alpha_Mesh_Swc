@@ -50,7 +50,7 @@ def mlab2tmesh(ms):
 
 
 
-def is_watertight(ms,name=None):
+def is_watertight(ms,name='watertight_check'):
     """Check whether the mesh is watertight using trimesh routine and tetgen.
 
     Args:
