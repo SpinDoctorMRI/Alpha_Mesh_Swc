@@ -142,9 +142,10 @@ This can be done by running
 ```
     pip install -r requirements.txt
 ```
-To produce the surface meshes the following python requirements are needed:‘numpy’, ‘scipy’,‘trimesh’, ‘pymeshlab(version>=2023.12.post1)’. To produce the volume meshes TetGen [1] must be installed, which we include here.
-
-TetGen is also used in our mesh algorithm to check the watertightness of the output mesh. If Python is unable to launch TetGen  an error is raised and instead a PyMeshLab filter is used instead. This filter is less accurate and may not always produce the desired outcome.
+To produce the surface meshes the following python requirements are needed:‘numpy’, ‘scipy’,‘trimesh’, ‘pymeshlab(version>=2023.12.post1)’. To produce the volume meshes TetGen [1] must be installed. Executables are provided for Mac and Windows users. Linux users should run the install script:
+```
+    bash tetgen_setup.sh
+```
 
 For some optional visualisation scripts in view_outputs  we use open3d. This is not used for anything other than visualisation.
 
