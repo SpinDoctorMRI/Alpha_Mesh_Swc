@@ -234,14 +234,14 @@ class Swc:
 
         """
         # Store output information
-        if output_dir == None:
+        if output_dir is None:
             name = self.file.replace(".swc", ".ply")
         else:
             filename = os.path.basename(self.file)
             name = output_dir + "/" + filename.replace(".swc", ".ply")
 
         # Get value for alpha_fraction
-        if alpha_fraction == None:
+        if alpha_fraction is None:
             diag = get_bbox_diag(self.position_data)
             alpha_fraction = max(2 * min(self.radius_data) / diag, 5e-4)
 
