@@ -1,42 +1,41 @@
 import numpy as np
 from numpy import linalg as LA
 from copy import deepcopy as dcp
-import pymeshlab as mlab
-from multiprocessing import Pool
 
-
-class Segment():
+class Segment:
     """Template for segments.
 
-        A Segment's subclass must have seven attributes:
-            color (ndarray): segment color, size [4 x 1];
-            points (ndarray): coordinates of sampled points,
-            size [3 x npoint];
-            normals (ndarray): out-pointing normal vectors,
-            size [3 x npoint];
-            keep (ndarray): the mask of points to keep;
-            area (float): segment area;
-            volume (float): segment volume;
-            aabb (tuple): axis-aligned bounding box;
+    A Segment's subclass must have seven attributes:
+        color (ndarray): segment color, size [4 x 1];
+        points (ndarray): coordinates of sampled points,
+        size [3 x npoint];
+        normals (ndarray): out-pointing normal vectors,
+        size [3 x npoint];
+        keep (ndarray): the mask of points to keep;
+        area (float): segment area;
+        volume (float): segment volume;
+        aabb (tuple): axis-aligned bounding box;
 
-        and four methods:
-            intersect: check intersection with another segment;
-            update: update the mask `keep`;
-            output: output valid points;
-            _create_points: create segment point cloud.
+    and four methods:
+        intersect: check intersection with another segment;
+        update: update the mask `keep`;
+        output: output valid points;
+        _create_points: create segment point cloud.
     """
 
     # encode info in color matrix
-    colors = np.array([
-        [1/7, 0, 0, 1],  # undefined
-        [0/7, 1, 1, 1],  # soma
-        [2/7, 0, 0, 1],  # axon
-        [3/7, 0, 0, 1],  # basal_dendrite
-        [4/7, 0, 0, 1],  # apical_dendrite
-        [5/7, 0, 0, 1],  # custom
-        [6/7, 0, 0, 1],  # unspecified_neurites
-        [7/7, 0, 0, 1],  # glia_processes
-    ])
+    colors = np.array(
+        [
+            [1 / 7, 0, 0, 1],  # undefined
+            [0 / 7, 1, 1, 1],  # soma
+            [2 / 7, 0, 0, 1],  # axon
+            [3 / 7, 0, 0, 1],  # basal_dendrite
+            [4 / 7, 0, 0, 1],  # apical_dendrite
+            [5 / 7, 0, 0, 1],  # custom
+            [6 / 7, 0, 0, 1],  # unspecified_neurites
+            [7 / 7, 0, 0, 1],  # glia_processes
+        ]
+    )
 
     def __init__(self) -> None:
         self.color = np.array([[1], [1], [1], [1]])
@@ -71,7 +70,7 @@ class Segment():
 
     def output(self, mask=None):
         """Output all valid points.
-        Valid points do not intersect with other geometries. 
+        Valid points do not intersect with other geometries.
 
         Args:
             mask (ndarray): mask of points.
@@ -106,14 +105,14 @@ class Segment():
         """Axis-aligned bounding box."""
 
         if self.__len__() < 1:
-            x = {'min': -np.inf, 'max': -np.inf}
-            y = {'min': -np.inf, 'max': -np.inf}
-            z = {'min': -np.inf, 'max': -np.inf}
+            x = {"min": -np.inf, "max": -np.inf}
+            y = {"min": -np.inf, "max": -np.inf}
+            z = {"min": -np.inf, "max": -np.inf}
         else:
             p, _, _ = self.output()
-            x = {'min': np.min(p[0, :]), 'max': np.max(p[0, :])}
-            y = {'min': np.min(p[1, :]), 'max': np.max(p[1, :])}
-            z = {'min': np.min(p[2, :]), 'max': np.max(p[2, :])}
+            x = {"min": np.min(p[0, :]), "max": np.max(p[0, :])}
+            y = {"min": np.min(p[1, :]), "max": np.max(p[1, :])}
+            z = {"min": np.min(p[2, :]), "max": np.max(p[2, :])}
 
         return x, y, z
 
@@ -143,8 +142,8 @@ class Sphere(Segment):
 
         super().__init__()
         self.color = self.colors[1].reshape(4, 1)
-        self.r = soma['radius']
-        self.center = soma['position'].reshape(3, 1)
+        self.r = soma["radius"]
+        self.center = soma["position"].reshape(3, 1)
         self.density = density
         self.points, self.normals = self._create_points()
         self.keep = np.full(self.points.shape[1], True)
@@ -166,10 +165,10 @@ class Sphere(Segment):
                 `out_near`: mask of outer points close to the boundary.
         """
         # Set r_min
-        if isinstance(seg,Frustum):
+        if isinstance(seg, Frustum):
             r_min = seg.r_min
-        elif isinstance(seg,Sphere):
-            r_min = min(self.r,seg.r)
+        elif isinstance(seg, Sphere):
+            r_min = min(self.r, seg.r)
         else:
             r_min = self.r
 
@@ -181,8 +180,8 @@ class Sphere(Segment):
         eps = 1e-3
         inner = dist < -eps
         on = (-eps <= dist) & (dist <= eps)
-        outer = dist > eps*10
-        out_near = (dist > eps) & (dist < 0.1*r_min)
+        outer = dist > eps * 10
+        out_near = (dist > eps) & (dist < 0.1 * r_min)
 
         return inner, on, outer, out_near
 
@@ -199,7 +198,7 @@ class Sphere(Segment):
 
         # translate points to local coordinate system
         points -= self.center
-        cos_angle = np.einsum('ij,ij->j', points, normals)
+        cos_angle = np.einsum("ij,ij->j", points, normals)
 
         # fix normals
         normals[:, cos_angle < 0] *= -1
@@ -224,12 +223,12 @@ class Sphere(Segment):
     @property
     def area(self):
         """Sphere area."""
-        return 4*np.pi*self.r**2
+        return 4 * np.pi * self.r**2
 
     @property
     def volume(self):
         """Sphere volume."""
-        return 4*np.pi*self.r**3 / 3
+        return 4 * np.pi * self.r**3 / 3
 
 
 class Frustum(Segment):
@@ -275,11 +274,11 @@ class Frustum(Segment):
         """
 
         super().__init__()
-        self.ra = start['radius']
-        self.rb = end['radius']
-        self.color = self._set_color(end['type'])
-        self.a = start['position'].reshape(3, 1)
-        self.b = end['position'].reshape(3, 1)
+        self.ra = start["radius"]
+        self.rb = end["radius"]
+        self.color = self._set_color(end["type"])
+        self.a = start["position"].reshape(3, 1)
+        self.b = end["position"].reshape(3, 1)
         self._translation = self.a
         self._rotation = self.rotation_matrix
         self.density = density
@@ -317,20 +316,23 @@ class Frustum(Segment):
         top_mask = points[2, :] >= self.h
         dist = LA.norm(points - np.array([[0, 0, self.h]]).T, axis=0)
         dist = dist - self.rb
-        top_in, top_on, top_out, top_near = \
-            self._create_masks(top_mask, dist, eps, r_min)
+        top_in, top_on, top_out, top_near = self._create_masks(
+            top_mask, dist, eps, r_min
+        )
 
         # bottom mask
         bottom_mask = points[2, :] <= 0
         dist = LA.norm(points, axis=0) - self.ra
-        bottom_in, bottom_on, bottom_out, bottom_near = \
-            self._create_masks(bottom_mask, dist, eps, r_min)
+        bottom_in, bottom_on, bottom_out, bottom_near = self._create_masks(
+            bottom_mask, dist, eps, r_min
+        )
 
         # lateral mask
         lateral_mask = (points[2, :] > 0) & (points[2, :] < self.h)
         dist = LA.norm(points[:2, :], axis=0) - self._r(points[2, :])
-        lateral_in, lateral_on, lateral_out, lateral_near = \
-            self._create_masks(lateral_mask, dist, eps, r_min)
+        lateral_in, lateral_on, lateral_out, lateral_near = self._create_masks(
+            lateral_mask, dist, eps, r_min
+        )
 
         # assemble masks
         inner = top_in | lateral_in | bottom_in
@@ -357,7 +359,7 @@ class Frustum(Segment):
         normals = self._rotation.T @ normals
 
         # fix normals
-        cos_angle = np.einsum('ij,ij->j', points, normals)
+        cos_angle = np.einsum("ij,ij->j", points, normals)
         normals[:, cos_angle < 0] *= -1
 
         # rotate normals back to global coordinate system
@@ -394,7 +396,7 @@ class Frustum(Segment):
         return points, normals
 
     def _create_local_frustum(self):
-        """Create frustum in its local coordinate system. 
+        """Create frustum in its local coordinate system.
         Bottom center is origin and axis is z-axis.
 
         Returns:
@@ -406,24 +408,24 @@ class Frustum(Segment):
         # number of lateral points
         if self.r_min < 0.2:
             npoint_lateral = int(
-                self.density*(100 + 100*self.h)/np.sqrt(self.r_min))
+                self.density * (100 + 100 * self.h) / np.sqrt(self.r_min)
+            )
         elif self.r_min < 0.3:
-            npoint_lateral = int(self.density*(150 + 150*self.h))
+            npoint_lateral = int(self.density * (150 + 150 * self.h))
         elif self.r_min < 0.5:
-            npoint_lateral = int(self.density*(120 + 120*self.h))
+            npoint_lateral = int(self.density * (120 + 120 * self.h))
         elif self.r_min < 1:
-            npoint_lateral = int(self.density*(80 + 100*self.h))
+            npoint_lateral = int(self.density * (80 + 100 * self.h))
         else:
-            npoint_lateral = int(self.density*(50 + 100*self.h))
+            npoint_lateral = int(self.density * (50 + 100 * self.h))
         # npoint_lateral = np.max([npoint_lateral, 200])
         npoint_lateral = int(20 * self.density * self.lateral_area)
         # create lateral points and normals
         points_lateral, theta = self._localfrustum(npoint_lateral)
-        normals_lateral = self._rotate_local_normal(
-            theta, self.local_lateral_normal)
+        normals_lateral = self._rotate_local_normal(theta, self.local_lateral_normal)
 
         # get top sphere
-        nsphere = int(20*self.density * self.top_area)
+        nsphere = int(20 * self.density * self.top_area)
         # nsphere = np.max([nsphere, 64])
         sphere = unitsphere(2 * nsphere)
         points_top = self.rb * sphere[:, :nsphere]
@@ -464,10 +466,8 @@ class Frustum(Segment):
         # normals = np.hstack((normals_top, normals_junc_top,
         #                     normals_lateral, normals_junc_bottom, normals_bottom))
         # assemble points and normals
-        points = np.hstack((points_top,
-                           points_lateral, points_bottom))
-        normals = np.hstack((normals_top,
-                            normals_lateral, normals_bottom))
+        points = np.hstack((points_top, points_lateral, points_bottom))
+        normals = np.hstack((normals_top, normals_lateral, normals_bottom))
 
         return points, normals
 
@@ -525,7 +525,7 @@ class Frustum(Segment):
         and frustum's minimum radius.
 
         The first color value encodes compartment color.
-        The second and third color values encode minimum radius. 
+        The second and third color values encode minimum radius.
         """
 
         # get color
@@ -565,7 +565,7 @@ class Frustum(Segment):
             ndarray: the normal vector, size [3 x 1].
         """
 
-        x = np.array([self.rb-self.ra, 0, self.h])
+        x = np.array([self.rb - self.ra, 0, self.h])
         x = x / LA.norm(x)
         y = np.array([0, 1, 0])
 
@@ -608,7 +608,7 @@ class Frustum(Segment):
     def lateral_area(self):
         """Lateral surface area of the frustum."""
         # return np.pi * self.slant_h * (self.ra + self.rb)
-        return 2*np.pi *np.sqrt(self.h**2 + (self.r_max - self.r_min)**2)
+        return 2 * np.pi * np.sqrt(self.h**2 + (self.r_max - self.r_min) ** 2)
 
     @property
     def top_area(self):
@@ -628,7 +628,7 @@ class Frustum(Segment):
     @property
     def lateral_volume(self):
         """Lateral part volume of the frustum."""
-        return np.pi*self.h*(self.ra**2 + self.rb**2 + self.ra*self.rb)/3
+        return np.pi * self.h * (self.ra**2 + self.rb**2 + self.ra * self.rb) / 3
 
     @property
     def top_volume(self):
@@ -652,7 +652,7 @@ class Frustum(Segment):
         inner = mask & (dist < -eps)
         on = mask & (-eps <= dist) & (dist <= eps)
         outer = mask & (eps < dist)
-        out_near = mask & (dist > eps) & (dist < 0.1*r_min)
+        out_near = mask & (dist > eps) & (dist < 0.1 * r_min)
 
         return inner, on, outer, out_near
 
@@ -660,7 +660,7 @@ class Frustum(Segment):
 def fibonacci_lattice(n):
     """http://extremelearning.com.au/evenly-distributing-points-on-a-sphere/"""
 
-    golden_ratio = (1 + 5**0.5)/2
+    golden_ratio = (1 + 5**0.5) / 2
     indices = np.arange(n)
     x, _ = np.modf(indices / golden_ratio)
     y = (indices + 0.5) / n
@@ -726,7 +726,7 @@ def unitcircle(n):
     """
 
     # Create angles
-    theta = np.linspace(0, 2*np.pi, n, endpoint=False)
+    theta = np.linspace(0, 2 * np.pi, n, endpoint=False)
 
     # Create points
     points = np.zeros([3, n])
@@ -757,7 +757,6 @@ def ellipsoid(n, a, b, c):
         points = unitsphere(n) * axes
         normals = points / axes**2
     else:
-        raise ValueError('Invalid ellipsoid axis length.')
+        raise ValueError("Invalid ellipsoid axis length.")
 
     return points, normals
-
