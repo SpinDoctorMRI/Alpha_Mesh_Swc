@@ -19,3 +19,4 @@ output
 /Modified_Ultraliser/SME
 /view_outputs/__pycache__
 Modified_Ultraliser/MU_batch_mesh_swc_refined.sh
+scratch.py

@@ -13,10 +13,12 @@ To install the necessary python prerequisites run:
 ```
 pip install -r requirements.txt
 ```
-Some of the visualisation tools require opend3d. This can be installed with pip but is not necessary to compute the meshes.
+
+To produce the surface meshes the following python requirements are needed:‘numpy’, ‘scipy’,‘trimesh’, ‘pymeshlab(version>=2023.12.post1)’. To produce the volume meshes TetGen [1] must be installed. Executables are provided for Mac and Windows users. Linux users should run the install script:
 ```
-pip install open3d
+    bash tetgen_setup.sh
 ```
+
 ### Neuron scripts
 To run the two neurons tested in section 4.1 run:
 
