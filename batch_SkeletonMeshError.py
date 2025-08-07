@@ -70,7 +70,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--create_summary",
-        int,
+        type=int,
         default=0,
         help="Flag to store a DataFrame with all summary statistics for each cell",
     )
