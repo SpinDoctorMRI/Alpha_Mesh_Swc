@@ -54,7 +54,6 @@ class Swc:
             if not (
                 conn_data[0, 1] == -1 and np.all(conn_data[1:, 0] > conn_data[1:, 1])
             ):
-                print("Reordering swc")
                 position_data, radius_data, conn_data, type_data = reorder_swc(
                     position_data, radius_data, conn_data, type_data
                 )
@@ -973,53 +972,11 @@ def reorder_swc(position_data, radius_data, conn_data, type_data):
     # Identify source node
     N = len(conn_data)
     nodes = conn_data[:, 0]
-    parents = conn_data[:, 1]
-    source = nodes[parents == -1]
-    # if len(source) > 1:
-    #     msg = f'swc file has {len(source)} source nodes.'
-    #     raise ValueError(msg)
-
-    # Initialise a permutation which will send the source node to the first position.
-    # New data will be given by new_data = original_data[permutation]
-    # permutation = np.zeros(N)
-    # permutation[source] = 0
-    # permutation[0] = source
-    # set= 0
-    # start_node = 0
-
-    # # Create permutation
-    # permutation,_ = reorder(start_node,set,nodes,parents,permutation)
-
-    permutation = np.zeros(N)
-    # permutation[source[0]] = 0
-    permutation[0] = source[0]
-    set = -1
-
-    recursion_limit = sys.getrecursionlimit()
-    if N > recursion_limit:
-        warnings.warn(
-            f"Temporarily Increasing python recusion limit from {recursion_limit} to {N}"
-        )
-        sys.setrecursionlimit(N)
-    # Create permutation
-    for i in source:
-        set = set + 1
-        permutation[set] = i
-        permutation, set = reorder(i, set, nodes, parents, permutation)
-    sys.setrecursionlimit(recursion_limit)
-    permutation = np.array(permutation).astype(int)
-    # Reorder data based on this permutation
-    conn_data = conn_data[permutation]
-    for i in range(0, N):
-        mask = conn_data == conn_data[i, 0]
-        mask2 = conn_data == i
-        conn_data[mask2] = conn_data[i, 0]
-        conn_data[mask] = i
-
+    permutation = np.argsort(nodes)
     position_data = position_data[permutation]
     type_data = type_data[permutation]
     radius_data = radius_data[permutation]
-
+    conn_data = conn_data[permutation]
     return position_data, radius_data, conn_data, type_data
 
 
