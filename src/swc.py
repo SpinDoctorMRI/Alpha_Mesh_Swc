@@ -566,6 +566,7 @@ def extract_swc(file):
     with open(file, "r") as f:
         first_node = True
         found_scale = False
+        start_index_0 = False
         reset_radii = []
         for iline in f:
             line = iline.strip().lower().split()
@@ -587,14 +588,21 @@ def extract_swc(file):
                 if first_node and int(line[6]) != -1:
                     raise ValueError("Parent of the first node must be -1.")
                 else:
+                    start_index_0 = (int(line[0]) == 0)
                     first_node = False
 
-                # extract info
-                id = int(line[0]) - 1
+                # extract inf
+                if start_index_0:
+                    id = int(line[0])
+                else:
+                    id = int(line[0]) - 1
                 node_type = int(line[1])
                 position = scale * np.array(line[2:5], dtype=float)
                 radius = float(line[5])
-                parent_id = int(line[6]) - 1
+                if start_index_0:
+                    parent_id = int(line[6])
+                else:
+                    parent_id = int(line[6]) - 1
 
                 # check parameters
                 if parent_id < 0:
